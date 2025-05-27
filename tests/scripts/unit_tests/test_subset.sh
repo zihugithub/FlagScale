@@ -164,6 +164,7 @@ run_tests() {
             eval $check_reports
         done
     fi
+
 }
 
 # Run tests based on type, path, and depth
