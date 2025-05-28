@@ -23,7 +23,7 @@ def test_train_equal(test_path, test_type, test_task, test_case):
 
     results_path = os.listdir(attempt_path)
     results_path.sort()
-    result_path = os.path.join(attempt_path, results_path[-1], "stdout.log")
+    result_path = os.path.join(attempt_path, results_path[-1], "stdout.log") # 7
 
     print("result_path:", result_path)
 
