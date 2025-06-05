@@ -4,6 +4,7 @@
 commands=(
     # For train
     "tests/scripts/functional_tests/test_task.sh --type train --task aquila"
+<<<<<<< HEAD
     # TODO: need fix
     # "tests/scripts/functional_tests/test_task.sh --type train --task deepseek"
     # "tests/scripts/functional_tests/test_task.sh --type train --task mixtral"
@@ -25,8 +26,28 @@ commands=(
     # "tests/scripts/functional_tests/test_task.sh --type inference-pipeline --task Qwen3-4B --hardware cambricon_mlu --flaggems enable"
     # For serve
     # "tests/scripts/functional_tests/test_task.sh --type serve --task base"
+=======
+#     # TODO: need fix
+#     # "tests/scripts/functional_tests/test_task.sh --type train --task deepseek"
+#     # "tests/scripts/functional_tests/test_task.sh --type train --task mixtral"
+#     # "tests/scripts/functional_tests/test_task.sh --type train --task llava_onevision"
+#     # for hetero-train
+#     # "tests/scripts/functional_tests/test_task.sh --type hetero_train --task aquila"
+#     # Add in the feature
+    # "tests/scripts/functional_tests/test_task.sh --type inference --task deepseek"
+    # "tests/scripts/functional_tests/test_task.sh --type inference --task qwen3"
+    # "tests/scripts/functional_tests/test_task.sh --type inference --task deepseek_flaggems"
+    # "tests/scripts/functional_tests/test_task.sh --type inference --task qwen3_flaggems"
+#     # For serve
+#     # "tests/scripts/functional_tests/test_task.sh --type serve --task base"
+>>>>>>> 3395d31bc9c85a045c825d8328371d0830976f68
 )
 
+if [ ! -f tests/functional_runtime.txt ];then
+    touch tests/functional_runtime.txt
+fi
+echo -e "\n********************************" >> tests/functional_runtime.txt
+echo "start time: $(date +"%Y-%m-%d %H:%M:%S")" >> tests/functional_runtime.txt
 for cmd in "${commands[@]}"; do
     # Execute the command
     $cmd
@@ -40,3 +61,4 @@ for cmd in "${commands[@]}"; do
         exit 1
     fi
 done
+echo "end time: $(date +"%Y-%m-%d %H:%M:%S")" >> tests/functional_runtime.txt
