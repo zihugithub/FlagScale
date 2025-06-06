@@ -1,6 +1,6 @@
 llm:
-  model: /home/gitlab-runner/data
-  tokenizer: /home/gitlab-runner/data
+  model: /home/gitlab-runner/data/Qwen3-4B
+  tokenizer: /home/gitlab-runner/data/Qwen3-4B
   trust_remote_code: true
   tensor_parallel_size: 2
   pipeline_parallel_size: 1
