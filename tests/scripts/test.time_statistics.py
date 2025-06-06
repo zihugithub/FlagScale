@@ -1,5 +1,6 @@
 import os
 import sys
+import yaml
 try:
     from openpyxl import Workbook, load_workbook
     from openpyxl.utils import get_column_letter
@@ -63,6 +64,8 @@ class test_time_statistics(object):
         self.file_name_txt = f"{oper_type}_runtime.txt"
         self.file_name_xlsx = f"{oper_type}-test.time.xlsx"
 
+    def xlsx_path(self): return os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+
     def data_file(self):
         '''
         File Content Format:
@@ -74,9 +77,45 @@ class test_time_statistics(object):
         for root,dirs,files in os.walk(os.getcwd()):
             if self.file_name_txt in files: 
                 self.file_name_txt = os.path.join(root,self.file_name_txt)
-                
-        assert os.path.isfile(self.file_name_txt), f"请先将测试用例运行时间存于文件：{self.file_name_txt}"
+
+        assert os.path.isfile(self.file_name_txt), f"请先将测试用例运行时间存于文件：{self.xlsx_path()}/{self.file_name_txt}"
         return self.file_name_txt
+
+    def get_image(self):
+        '''
+        NOTE: 镜像需要手动填写【没权限读取环境变量】
+        DATE: 2025-06-06
+        '''
+        workflows = f"{os.path.dirname(self.xlsx_path())}/.github/workflows/all-tests.yml"
+        assert os.path.isfile(workflows), f"请确保文件 {workflows} 的存在"
+        with open(workflows,"r") as file:
+            config = yaml.safe_load(file)
+        if 'jobs' not in config:
+            raise ValueError(f"Test node 'jobs' not found in configuration file.")
+        else:
+            jobs = config['jobs']
+
+        if "set-env" not in jobs:
+            raise ValueError(f"Test node 'jobs.set-env' not found in configuration file.")
+        else:
+            set_env = jobs["set-env"]
+
+        if 'steps' not in set_env:
+            raise ValueError(f"Test node 'jobs.set-env.steps' not found in configuration file.")
+        else:
+            steps = set_env["steps"]
+
+        if 'run' not in steps[0]:
+            raise ValueError(f"Test node 'jobs.set-env.steps.[run]' not found in configuration file.")
+        else:
+            run = steps[0]['run'].strip()
+
+        if "ci_image" not in run:
+            raise ValueError(f"Test node 'jobs.set-env.steps.[run].ci_image' not found in configuration file.")
+        else:
+            ci_image = run.split('"')[1].split("=")[1]
+
+        return ci_image
 
     def create_unit_layout(self):
         wb = Workbook()
@@ -140,7 +179,7 @@ class test_time_statistics(object):
         ws["C%s"%(flagscale_end_index-1)] = unit["status"][0]
         ws["C%s"%(flagscale_end_index)] = unit["status"][1]
         # eg
-        wb.save(self.file_name_xlsx)
+        wb.save(f"{self.xlsx_path()}/{self.file_name_xlsx}")
 
     def create_functional_layout(self):
         wb = Workbook()
@@ -156,8 +195,6 @@ class test_time_statistics(object):
         ws['C2'] = list(functional.keys())[4]
         # 镜像 Field Arrangement
         ws['C1'] = functional["image"]
-        # 镜像 案例
-        ws["D1"] = "flagscale:cuda12.4.1-cudnn9.5.0-python3.12-torch2.6.0-time2505241715"
 
         # task inference Field Arrangement
         for inference_index0, inference_site in enumerate(range(3, len(functional["task"]["inference"]) + 3)):
@@ -168,7 +205,7 @@ class test_time_statistics(object):
             for inference_index1, inference_field in enumerate(functional["task"]["inference"]):
                 if inference_index0 == inference_index1:
                     ws["B%s"%(inference_site)] = inference_field
-                    
+
         # task train Field Arrangement
         for train_index0, train_site in enumerate(range(inference_end_index + 1, inference_end_index + len(functional["task"]["train"]) + 1)):
             if train_index0 == 0:
@@ -228,10 +265,10 @@ class test_time_statistics(object):
                 if case_runtime_index0 == case_runtime_index1:
                     ws["C%s"%(case_runtime_site)] = case_runtime_field
 
-        wb.save(self.file_name_xlsx)
-    
+        wb.save(f"{self.xlsx_path()}/{self.file_name_xlsx}")
+
     def get_line_range(self):
-        wb = load_workbook(self.file_name_xlsx)
+        wb = load_workbook(f"{self.xlsx_path()}/{self.file_name_xlsx}")
         ws = wb.active
         for row in ws.iter_rows():
             for cell in row:
@@ -242,11 +279,11 @@ class test_time_statistics(object):
         end_case_runtime_site = 0
         for sheet in wb.worksheets:
             end_case_runtime_site += sheet.max_row
-        
+
         return start_case_runtime_site, end_case_runtime_site
 
     def unit_add_data(self):
-        wb = load_workbook(self.file_name_xlsx)
+        wb = load_workbook(f"{self.xlsx_path()}/{self.file_name_xlsx}")
         ws = wb.active
         max_columns = get_column_letter(ws.max_column) # 整个工作表中所有数据的最大列号
         for action_column in range(ord(max_columns) + 1, ord(max_columns) + 2):  # 遍历大写字母
@@ -294,11 +331,11 @@ class test_time_statistics(object):
             if ws[f"{action_column}{activate_site}"].value == None :
                 ws[f"{action_column}{activate_site}"] = "none"
 
-        wb.save(self.file_name_xlsx)
+        wb.save(f"{self.xlsx_path()}/{self.file_name_xlsx}")
 
 
     def functional_add_data(self):
-        wb = load_workbook(self.file_name_xlsx)
+        wb = load_workbook(f"{self.xlsx_path()}/{self.file_name_xlsx}")
         ws = wb.active
         max_columns = get_column_letter(ws.max_column) # 整个工作表中所有数据的最大列号
         action_column = chr(ord(max_columns) + 1) # 新增列号，如：D
@@ -367,19 +404,18 @@ class test_time_statistics(object):
             if ws[f"{action_column}{activate_site}"].value == None :
                 ws[f"{action_column}{activate_site}"] = "none"
 
-        wb.save(self.file_name_xlsx)
+        wb.save(f"{self.xlsx_path()}/{self.file_name_xlsx}")
 
 if __name__ == "__main__":
-#     if len(sys.argv) != 2:
-#         print("Usage: test.time_statistics.py <test_type>")
-#         sys.exit(1)
-#     test_type = sys.argv[1]
+    if len(sys.argv) != 2:
+        print("Usage: test.time_statistics.py <test_type>")
+        sys.exit(1)
+    test_type = sys.argv[1]
 
-    test_type = "functional"
+    # test_type = "functional"
     # test_type = "unit"
 
     case = test_time_statistics(test_type)
-    case.get_line_range()
 
     if os.path.isfile(case.file_name_xlsx):
         if test_type == "unit":
@@ -389,7 +425,9 @@ if __name__ == "__main__":
     else:
         if test_type == "unit":
             case.create_unit_layout()
+            case.get_line_range()
             case.unit_add_data()
         elif test_type == "functional":
             case.create_functional_layout()
+            case.get_line_range()
             case.functional_add_data()
