@@ -186,7 +186,7 @@ class test_time_statistics(object):
         ws = wb.active
         # 功能测试指令case运行时间统计 Field Arrangement
         ws.merge_cells("A1:B1")
-        ws['A1'] = unit["name"]
+        ws['A1'] = functional["name"]
         # type Field Arrangement
         ws['A2'] = list(functional.keys())[2]
         # task Field Arrangement
