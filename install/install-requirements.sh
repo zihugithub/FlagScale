@@ -267,7 +267,7 @@ if [ "${env}" == "agent" ]; then
     fi
     python tools/patch/unpatch.py --backend vllm
     MAX_JOBS=$(nproc) pip install --no-build-isolation -v ./third_party/vllm/.
-    # pip install -r ../RoboOS/requirement.txt
+    pip install -r ./requirements/requirements-agent.txt
 fi
 
 # Clean all conda caches
