@@ -123,24 +123,21 @@ RUN cd ${STAGE_DIR} && \
 ##############################################################################
 RUN cd ${WORK_DIR} && \
     git clone -b Dockerfile_agent_cuda https://github.com/zihugithub/FlagScale.git && \
+    git clone -b main https://github.com/FlagOpen/RoboOS.git && \
     cd FlagScale && \
-    chmod +x install/install-requirements.sh && \
-    git clone -b main https://github.com/FlagOpen/RoboOS.git
+    chmod +x install/install-requirements.sh
 
 ##############################################################################
 # Creating conda environment flagscale-agent
 ##############################################################################
 RUN cd ${WORK_DIR}/FlagScale && \
-    cp ../RoboOS/requirement.txt ./requirements/requirements-agent.txt && \
     ./install/install-requirements.sh --env agent &&\
     echo "conda activate flagscale-inference" >> ~/.bashrc
-    
+
 # ##############################################################################
 # # For Roboos release
 # ##############################################################################
 # RUN cd ${WORK_DIR}/FlagScale && \
-
-
 
 # ##############################################################################
 # # Clear

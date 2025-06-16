@@ -265,9 +265,15 @@ if [ "${env}" == "agent" ]; then
     if pip list | grep -q vllm; then
         pip uninstall vllm -y
     fi
+
+    # Unpatch
     python tools/patch/unpatch.py --backend vllm
+
+    # Build vllm
     MAX_JOBS=$(nproc) pip install --no-build-isolation -v ./third_party/vllm/.
-    pip install -r ./requirements/requirements-agent.txt
+
+    # Navigate to requirements directory and install RoboOS dependencies
+    pip install -r ./requirements/agent/requirements-agent.txt
 fi
 
 # Clean all conda caches
