@@ -3,9 +3,9 @@
 set -e
 
 print_help() {
-    echo "Usage: $0 [--env <train|inference>] [--llama-cpp-backend <cpu|metal|blas|openblas|blis|cuda|gpu|musa|vulkan_mingw64|vulkan_msys2|cann|arm_kleidi|hip|opencl_android|opencl_windows_arm64>]"
+    echo "Usage: $0 [--env <train|inference|agent>] [--llama-cpp-backend <cpu|metal|blas|openblas|blis|cuda|gpu|musa|vulkan_mingw64|vulkan_msys2|cann|arm_kleidi|hip|opencl_android|opencl_windows_arm64>]"
     echo "Options:"
-    echo "  --env <train|inference>         Specify the environment type (required)"
+    echo "  --env <train|inference|agent>         Specify the environment type (required)"
     echo "  --llama-cpp-backend <backend>   Specify the llama.cpp backend (default: cpu)"
 }
 
@@ -24,15 +24,15 @@ while [[ "$#" -gt 0 ]]; do
     shift
 done
 
-# Check if 'env' field is provided and is either 'train' or 'inference'
+# Check if 'env' field is provided and is either 'train' or 'inference' or 'agent'
 if [ -z "$env" ]; then
-    echo "Error: env field is required. Please specify either 'train' or 'inference'."
+    echo "Error: env field is required. Please specify either 'train' or 'inference' or 'agent'."
     exit 1
 fi
 
 # Check the value of env
-if [ "$env" != "train" ] && [ "$env" != "inference" ]; then
-    echo "Error: env must be 'train' or 'inference'."
+if [ "$env" != "train" ] && [ "$env" != "inference" ] && [ "$env" != "agent" ]; then
+    echo "Error: env must be 'train' or 'inference' or agent."
     exit 1
 fi
 
@@ -258,6 +258,16 @@ if [ "${env}" == "inference" ]; then
 
     # For FlagRelease
     pip install --no-build-isolation git+https://github.com/FlagOpen/FlagGems.git@release_v1.0.0
+fi
+
+# If env equals 'agent'
+if [ "${env}" == "agent" ]; then
+    if pip list | grep -q vllm; then
+        pip uninstall vllm -y
+    fi
+    python tools/patch/unpatch.py --backend vllm
+    MAX_JOBS=$(nproc) pip install --no-build-isolation -v ./third_party/vllm/.
+    # pip install -r ../RoboOS/requirement.txt
 fi
 
 # Clean all conda caches
