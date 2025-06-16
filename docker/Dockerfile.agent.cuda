@@ -36,7 +36,7 @@ RUN apt-get update && \
         unzip \
         vim \
         wget \
-        redis-server && \
+        redis-server
 
 ##############################################################################
 # Install Python
@@ -129,7 +129,7 @@ RUN cd ${WORK_DIR} && \
 ##############################################################################
 RUN cd ${WORK_DIR}/FlagScale && \
     ./install/install-requirements.sh --env agent &&\
-    echo "conda activate flagscale-inference" >> ~/.bashrc
+    echo "conda activate flagscale-agent" >> ~/.bashrc
 
 ##############################################################################
 # For Roboos release
