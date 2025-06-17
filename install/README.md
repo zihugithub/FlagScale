@@ -9,3 +9,9 @@
 ```bash
 ./install/install-requirements.sh --env inference --llama-cpp-backend cuda
 ```
+
+# Install the environment for agent.
+
+```bash
+./install/install-requirements.sh --env agent
+```

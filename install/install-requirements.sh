@@ -268,6 +268,8 @@ if [ "${env}" == "agent" ]; then
 
     # Unpatch
     python tools/patch/unpatch.py --backend vllm
+    # pip install blake3
+    # pip install setuptools_scm
 
     # Build vllm
     # MAX_JOBS=$(nproc) pip install --no-build-isolation -v ./third_party/vllm/.
