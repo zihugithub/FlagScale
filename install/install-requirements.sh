@@ -271,7 +271,7 @@ if [ "${env}" == "agent" ]; then
 
     # Build vllm
     # MAX_JOBS=$(nproc) pip install --no-build-isolation -v ./third_party/vllm/.
-    MAX_JOBS=$(nproc) pip install --no-build-isolation -v ./third_party/vllm/.
+    MAX_JOBS=$(nproc) pip install -v ./third_party/vllm/.
 
     # Navigate to requirements directory and install RoboOS dependencies
     pip install -r ./requirements/agent/requirements-agent.txt
