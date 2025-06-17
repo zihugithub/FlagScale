@@ -270,6 +270,7 @@ if [ "${env}" == "agent" ]; then
     python tools/patch/unpatch.py --backend vllm
 
     # Build vllm
+    # MAX_JOBS=$(nproc) pip install --no-build-isolation -v ./third_party/vllm/.
     MAX_JOBS=$(nproc) pip install --no-build-isolation -v ./third_party/vllm/.
 
     # Navigate to requirements directory and install RoboOS dependencies
