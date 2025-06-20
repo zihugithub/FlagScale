@@ -1,4 +1,4 @@
-ARG CUDA_VERSION=12.4.1
+ARG CUDA_VERSION=12.8.1
 FROM nvcr.io/nvidia/cuda:${CUDA_VERSION}-devel-ubuntu22.04
 
 ENV DEBIAN_FRONTEND noninteractive

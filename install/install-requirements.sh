@@ -153,7 +153,7 @@ if [ "${env}" == "train" ]; then
     fi
 
     # Replace the following code with torch version 2.6.0
-    if [[ $torch_version == *"2.6.0"* ]];then
+    if [[ $torch_version == *"2.6.0"* ]] || [[ $torch_version == *"2.7.0"* ]];then
         # Check and replace line 908
         LINE_908=$(sed -n '908p' "$FILE")
         EXPECTED_908='                if num_nodes_waiting > 0:'
