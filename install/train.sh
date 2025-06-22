@@ -24,6 +24,39 @@ while [[ "$#" -gt 0 ]]; do
     shift
 done
 
+# Check if 'env' field is provided and is either 'train' or 'inference'
+if [ -z "$env" ]; then
+    echo "Error: env field is required. Please specify either 'train' or 'inference'."
+    exit 1
+fi
+
+# Check the value of env
+if [ "$env" != "train" ] && [ "$env" != "inference" ]; then
+    echo "Error: env must be 'train' or 'inference'."
+    exit 1
+fi
+
+python -m pip install --upgrade pip
+
+# Packages that need to be installed outside of the conda environment
+pip install -r ./requirements/requirements-base.txt
+
+# Proceed with setup based on the value of 'env'
+echo "Setting up environment for: $env"
+
+# Load conda environment
+source ~/miniconda3/etc/profile.d/conda.sh
+
+# Create and activate Conda virtual environment
+# The Python version used has been written into the conda config
+if conda env list | grep -q "flagscale-${env}"; then
+    # Check if the environment already exists
+    echo "Conda environment 'flagscale-${env}' already exists."
+else
+    echo "Creating conda environment 'flagscale-${env}'..."
+    conda create --name "flagscale-${env}" python=$(python --version | awk '{print $2}' | cut -d '.' -f 1,2) -y
+fi
+conda activate flagscale-${env}
 wget https://github.com/Dao-AILab/flash-attention/releases/download/v2.8.0.post2/flash_attn-2.8.0.post2+cu12torch2.7cxx11abiFALSE-cp312-cp312-linux_x86_64.whl
 pip install flash_attn-2.7.3+cu12torch2.6cxx11abiFALSE-cp312-cp312-linux_x86_64.whl
 rm flash_attn-2.7.3+cu12torch2.6cxx11abiFALSE-cp312-cp312-linux_x86_64.whl
