@@ -12,12 +12,14 @@ print_help() {
 # Initialize the variable
 env=""
 llama_cpp_backend="cpu"
+omni_infer="0"
 
 # Parse command-line options
 while [[ "$#" -gt 0 ]]; do
     case $1 in
         --env) env="$2"; shift ;;  # Assign the value after '--env'
         --llama-cpp-backend) llama_cpp_backend="$2"; shift ;;  # Assign the value after '--llama-cpp-backend'
+        --omni_infer) omni_infer="$2"; shift ;;  # Assign the value after '--llama-cpp-backend'
         --help|-h) print_help; exit 0 ;;
         *) echo "Error: Unknown parameter passed."; print_help; exit 1 ;;
     esac
@@ -82,14 +84,15 @@ CMAKE_ARGS="-DCMAKE_POLICY_VERSION_MINIMUM=3.5" pip install nvidia-cudnn-fronten
 python -c "import torch; print('cuDNN version:', torch.backends.cudnn.version());"
 python -c "from transformer_engine.pytorch.utils import get_cudnn_version; get_cudnn_version()"
 
-# Megatron-LM requires flash-attn >= 2.1.1, <= 2.8.0.post2
+# Megatron-LM requires flash-attn >= 2.1.1, <= 2.7.3
 cu=$(nvcc --version | grep "Cuda compilation tools" | awk '{print $5}' | cut -d '.' -f 1)
 torch=$(pip show torch | grep Version | awk '{print $2}' | cut -d '+' -f 1 | cut -d '.' -f 1,2)
 cp=$(python3 --version | awk '{print $2}' | awk -F. '{print $1$2}')
 cxx=$(g++ --version | grep 'g++' | awk '{print $3}' | cut -d '.' -f 1)
-wget https://github.com/Dao-AILab/flash-attention/releases/download/v2.8.0.post2/flash_attn-2.8.0.post2+cu${cu}torch${torch}cxx${cxx}abiFALSE-cp${cp}-cp${cp}-linux_x86_64.whl
-pip install flash_attn-2.8.0.post2+cu${cu}torch${torch}cxx${cxx}abiFALSE-cp${cp}-cp${cp}-linux_x86_64.whl
-rm flash_attn-2.8.0.post2+cu${cu}torch${torch}cxx${cxx}abiFALSE-cp${cp}-cp${cp}-linux_x86_64.whl
+flash_attn_version="2.8.0.post2"
+wget https://github.com/Dao-AILab/flash-attention/releases/download/v${flash_attn_version}/flash_attn-${flash_attn_version}+cu${cu}torch${torch}cxx${cxx}abiFALSE-cp${cp}-cp${cp}-linux_x86_64.whl
+pip install --no-cache-dir flash_attn-${flash_attn_version}+cu${cu}torch${torch}cxx${cxx}abiFALSE-cp${cp}-cp${cp}-linux_x86_64.whl
+rm flash_attn-${flash_attn_version}+cu${cu}torch${torch}cxx${cxx}abiFALSE-cp${cp}-cp${cp}-linux_x86_64.whl
 
 # From Megatron-LM log
 pip install "git+https://github.com/Dao-AILab/flash-attention.git@v2.7.2#egg=flashattn-hopper&subdirectory=hopper"
@@ -192,6 +195,7 @@ if [ "${env}" == "inference" ]; then
     # Unpatch
     python tools/patch/unpatch.py --backend vllm
     python tools/patch/unpatch.py --backend llama.cpp
+    python tools/patch/unpatch.py --backend omniinfer
 
     # Build vllm
     # Navigate to requirements directory and install inference dependencies
@@ -255,6 +259,49 @@ if [ "${env}" == "inference" ]; then
             exit 1
             ;;
     esac
+
+    cd ../..
+    # Build omniinfer
+    if [ "${omni_infer}" == "1" ]; then
+        # process repo
+        find ./third_party/omniinfer -type f -exec dos2unix {} +
+        find ./third_party/omniinfer -type f -path '*.sh' -exec chmod a+x {} \;
+
+        # unpatch vllm
+        cd ./third_party/omniinfer/infer_engines/
+        git clone https://github.com/vllm-project/vllm.git
+        git checkout 65334ef3
+        bash bash_install_code.sh
+        cd ../../..
+
+        # install dependencies
+        pip install -r ./third_party/omniinfer/tests/requirements.txt
+
+        # build whl for vllm
+        mkdir -p ./third_party/omniinfer/build/dist
+        cd ./third_party/omniinfer/infer_engines/vllm
+        VLLM_TARGET_DEVICE=empty python setup.py bdist_wheel
+        mv dist/vllm* ../../build/dist
+
+        # build whl for omniinfer
+        cd ../..
+        pip install build
+        python -m build
+        mv dist/omni_i* ./build/dist
+
+        # build whl for omniinfer omni_placement
+        cd ./omni/accelerators/placement
+        python setup.py bdist_wheel
+        mv dist/omni_placement* ../../../build/dist
+
+        # install 3 whl
+        cd ../../../build/dist
+        pip install omni_i*.whl
+        pip install vllm*.whl
+        pip install omni_placement*.whl
+
+        cd ../../../..
+    fi
 
     # For FlagRelease
     pip install --no-build-isolation git+https://github.com/FlagOpen/FlagGems.git@release_v1.0.0
