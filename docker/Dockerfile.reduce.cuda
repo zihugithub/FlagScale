@@ -167,7 +167,7 @@ RUN apt-get clean && \
 ##############################################################################
 # ==================== Final Stage: Minimal Runtime Image ====================
 ##############################################################################
-FROM nvcr.io/nvidia/cuda:${CUDA_VERSION}-devel-ubuntu22.04 AS final
+FROM nvcr.io/nvidia/cuda:12.8.1-devel-ubuntu22.04 AS final
 
 ARG WORK_DIR=/workspace
 ARG STAGE_DIR=/tmp
@@ -181,56 +181,24 @@ RUN mkdir -p ${WORK_DIR} && \
     mkdir -p ${STAGE_DIR}
 
 ##############################################################################
-# Install Basic Utilities
-##############################################################################
-RUN apt-get update && \
-    apt-get install -y --no-install-recommends apt-utils && \
-    echo "N" | apt-get install -y --no-install-recommends pkg-config && \
-    apt-get install -y --no-install-recommends \
-        autotools-dev \
-        build-essential \
-        ca-certificates ccache cmake curl \
-        emacs \
-        gcc git git-lfs g++ \
-        htop \
-        iftop iotop \
-        libcairo2-dev libfontconfig-dev libibverbs1 libibverbs-dev libnuma-dev libx11-dev lsb-release \
-        net-tools nfs-common ninja-build \
-        openssh-server openssh-client \
-        pdsh psmisc \
-        rsync \
-        screen software-properties-common sudo \
-        tmux tzdata \
-        unzip \
-        vim \
-        wget
-
-##############################################################################
-# Clear
-##############################################################################
-RUN apt-get clean && \
-        rm -rf /var/lib/apt/lists/* && \
-        rm -rf ${STAGE_DIR}/*
-
-##############################################################################
 # Copy necessary files from build stages
 ##############################################################################
-# Migrating Python3.12
-COPY --from=base /usr/bin/python3.12-config /usr/bin/python3.12-config
-COPY --from=base /usr/bin/python3 /usr/bin/python3
-# Migrating OPENMPI
-COPY --from=base /usr/local/openmpi-4.1.6 /usr/local/openmpi-4.1.6
-COPY --from=base /usr/local/mpi usr/local/mpi
-# Migrating Miniconda
-COPY --from=base /root/miniconda3 /root/miniconda3
-# Migrating cuDNN (NVIDIA CUDA Deep Neural Network library)
-COPY --from=base /usr/local/cuda-12.8/include /usr/local/cuda-12.8/include
-COPY --from=base /usr/local/cuda-12.8/lib64 /usr/local/cuda-12.8/lib64
+# Basic Utilities
+COPY --from=base /etc /etc
+COPY --from=base /var/lib/dpkg /var/lib/dpkg
+COPY --from=base /var/lib/apt /var/lib/apt
+COPY --from=base /usr/bin /usr/bin
+COPY --from=base /usr/lib /usr/lib
+COPY --from=base /usr/share /usr/share
+COPY --from=base /usr/include /usr/include
+COPY --from=base /usr/local /usr/local
 COPY --from=base /root/.bashrc /root/.bashrc
+COPY --from=base /root/miniconda3 /root/miniconda3
 
-RUN ln -sf /usr/bin/python3.12-config /usr/bin/python3-config && \
-    ln -s /usr/bin/python3 /usr/bin/python && \
-    # OPENMPI
+RUN update-alternatives --install /usr/bin/python3 python3 /usr/bin/python3.12 1 && \
+    update-alternatives --set python3 /usr/bin/python3.12 && \
+    ln -sf /usr/bin/python3.12-config /usr/bin/python3-config && \
+    ln -sf /usr/bin/python3 /usr/bin/python && \
     ln -sf /usr/local/openmpi-4.1.6 /usr/local/mpi && \
     test -f /usr/local/mpi/bin/mpic++ && \
     # Miniconda
