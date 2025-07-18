@@ -51,7 +51,11 @@ test_task() {
       fi
       _cases=($_case_name)  # Create an array with the case name
 
-      case_path="tests/functional_tests/test_cases/inference-pipeline/${_case_name}"
+      if [[ "$_device" == "nvidia" ]];then
+          case_path="tests/functional_tests/test_cases/${_device}_inference-pipeline/${_case_name}"
+      else
+          case_path="tests/functional_tests/test_cases/inference-pipeline/${_case_name}"
+      fi
 
       case_model_path="${case_path}/conf/inference/${_case_name}.yaml"
 
