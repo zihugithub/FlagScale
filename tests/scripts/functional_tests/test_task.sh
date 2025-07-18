@@ -31,6 +31,14 @@ test_task() {
   local _flaggems=$3
   local _hardware=$4
   local _device=$4
+
+  # Define test types
+  if [[ "$_type" =~ "inference" ]];then
+      if [ "$_device" != "nvidia" ];then
+        _task="${_device}_${_task}"
+      fi
+  fi
+
   # Use parse_config.py to parse the YAML file with test type and test task
   local _cases=$(python tests/scripts/functional_tests/parse_config.py --config $CONFIG_FILE --type $_type --task $_task)
 
@@ -43,11 +51,7 @@ test_task() {
       fi
       _cases=($_case_name)  # Create an array with the case name
 
-      if [[ "$_device" == "nvidia" ]];then
-          case_path="tests/functional_tests/test_cases/${_device}_inference-pipeline/${_case_name}"
-      else
-          case_path="tests/functional_tests/test_cases/inference-pipeline/${_case_name}"
-      fi
+      case_path="tests/functional_tests/test_cases/inference-pipeline/${_case_name}"
 
       case_model_path="${case_path}/conf/inference/${_case_name}.yaml"
 
@@ -114,12 +118,12 @@ test_task() {
         run_command "pytest -s tests/functional_tests/test_utils/test_result.py::test_inference_pipeline --test_path=tests/functional_tests/test_cases --test_type=${_type} --test_task=${_case} --test_case=${_case}" $attempt_i $_task $_type $_case
       fi
 
-      todo: open this case
-      if [ "${_type}" = "serve" ]; then
-        run_command "python run.py --config-path tests/functional_tests/test_cases/${_type}/${_task}/conf --config-name ${_case} action=run; sleep 1m" $attempt_i $_task $_type $_case
-        run_command "pytest tests/functional_tests/test_utils/test_call.py --test_path=tests/functional_tests/test_cases --test_type=${_type} --test_task=${_task} --test_case=${_case}" $attempt_i $_task $_type $_case
-        run_command "python run.py --config-path tests/functional_tests/test_cases/${_type}/${_task}/conf --config-name ${_case} action=stop" $attempt_i $_task $_type $_case
-      fi
+      # todo: open this case
+      # if [ "${_type}" = "serve" ]; then
+      #   run_command "python run.py --config-path tests/functional_tests/test_cases/${_type}/${_task}/conf --config-name ${_case} action=run; sleep 1m" $attempt_i $_task $_type $_case
+      #   run_command "pytest tests/functional_tests/test_utils/test_call.py --test_path=tests/functional_tests/test_cases --test_type=${_type} --test_task=${_task} --test_case=${_case}" $attempt_i $_task $_type $_case
+      #   run_command "python run.py --config-path tests/functional_tests/test_cases/${_type}/${_task}/conf --config-name ${_case} action=stop" $attempt_i $_task $_type $_case
+      # fi
 
       # Ensure that pytest check is completed before deleting the folder
       sleep 10s
