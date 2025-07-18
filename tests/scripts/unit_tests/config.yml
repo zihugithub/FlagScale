@@ -14,13 +14,27 @@ megatron:
   subset:
     data:
       deselect:
-      - skip_unit_test_modules
+        - skip_unit_test_modules
     dist_checkpointing:
       type: single
       ignore:
         - models/test_mamba.py
       deselect:
         - skip_unit_test_modules
+      missing:
+        - exchange_utils.py
+        - mapping.py
+        - serialization.py
+        - strategies/cached_metadata_filesystem_reader.py
+        - strategies/filesystem_async.py
+        - strategies/resharding.py
+        - strategies/state_dict_saver.py
+        - strategies/tensorstore.py
+        - strategies/torch.py
+        - strategies/two_stage.py
+        - strategies/zarr.py
+        - tensor_aware_state_dict.py
+        - validation.py
     distributed:
       type: single
     export:

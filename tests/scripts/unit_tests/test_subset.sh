@@ -44,6 +44,7 @@ type=$(echo $config | cut -d '|' -f 4);type=${type:-"batch"}
 depth=$(echo $config | cut -d '|' -f 5);depth=${depth:-"all"}
 ignore=$(echo $config | cut -d '|' -f 6)
 deselect=$(echo $config | cut -d '|' -f 7)
+missing=$(echo $config | cut -d '|' -f 8)
 id=${id:-0}
 
 # Set the test path based on root and subset
@@ -109,6 +110,7 @@ run_tests() {
     local _depth="$3"
     local _ignore="$4"
     local _deselect="$5"
+    local _missing="$6"
 
     local _test_files="$_path"
     if ! ([ "$_depth" = "all" ] && [ "$_type" = "batch" ]); then
@@ -145,6 +147,21 @@ run_tests() {
         done
     fi
 
+    # Process the raw missing into bash-friendly --ignore parameters
+    missing_cmd=""
+    if [ -n "$_missing" ]; then
+        # Handle the entire string as a list of files
+        for item in $_missing; do
+            # Remove the leading '-' from each item if it exists
+            _clean_item=${item#-}
+            _clean_item=$(echo "$_clean_item" | tr -d "',[]")
+            missing_cmd+="--ignore=${path}/${_clean_item} "
+            _test_files=$(echo "$_test_files" | grep -v "${_path}/${_clean_item}")
+        done
+    fi
+
+    _test_files=$(echo "$_test_files" | tr '\n' ' ')
+
     local html_report="/workspace/report/$id/cov-report-${backend}"
     local xml_report="$html_report/coverage.xml"
     export COMMIT_ID=$id
@@ -159,15 +176,15 @@ run_tests() {
     fi
 
     if [ "$_type" == "batch" ]; then
-        run_command "torchrun --nproc_per_node=8 -m pytest $coverage_parameters -q -x -p no:warnings $ignore_cmd $deselect_cmd $_test_files"
+        run_command "torchrun --nproc_per_node=8 -m pytest $coverage_parameters -q -x -p no:warnings $ignore_cmd $missing_cmd $deselect_cmd $_test_files"
         eval $check_reports
     elif [ "$_type" == "single" ]; then
         for _test_file in $_test_files; do
-            run_command "torchrun --nproc_per_node=8 -m pytest $coverage_parameters -q -x -p no:warnings $ignore_cmd $deselect_cmd $_test_file"
+            run_command "torchrun --nproc_per_node=8 -m pytest $coverage_parameters -q -x -p no:warnings $ignore_cmd $missing_cmd $deselect_cmd $_test_file"
             eval $check_reports
         done
     fi
 }
 
 # Run tests based on type, path, and depth
-run_tests "$type" "$path" "$depth" "$ignore" "$deselect"
+run_tests "$type" "$path" "$depth" "$ignore" "$deselect" "$missing"
