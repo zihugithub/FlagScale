@@ -30,6 +30,7 @@ test_task() {
   local _task=$2
   local _flaggems=$3
   local _hardware=$4
+  local _device=$4
   # Use parse_config.py to parse the YAML file with test type and test task
   local _cases=$(python tests/scripts/functional_tests/parse_config.py --config $CONFIG_FILE --type $_type --task $_task)
 
@@ -41,7 +42,13 @@ test_task() {
           _case_name="${_case_name}_flaggems"
       fi
       _cases=($_case_name)  # Create an array with the case name
-      case_path="tests/functional_tests/test_cases/inference-pipeline/${_case_name}"
+
+      if [[ "$_device" == "nvidia" ]];then
+          case_path="tests/functional_tests/test_cases/${_device}_inference-pipeline/${_case_name}"
+      else
+          case_path="tests/functional_tests/test_cases/inference-pipeline/${_case_name}"
+      fi
+
       case_model_path="${case_path}/conf/inference/${_case_name}.yaml"
 
       # Replace the model and tokenizer paths in the configuration file
@@ -107,12 +114,12 @@ test_task() {
         run_command "pytest -s tests/functional_tests/test_utils/test_result.py::test_inference_pipeline --test_path=tests/functional_tests/test_cases --test_type=${_type} --test_task=${_case} --test_case=${_case}" $attempt_i $_task $_type $_case
       fi
 
-      # todo: open this case
-      # if [ "${_type}" = "serve" ]; then
-      #   run_command "python run.py --config-path tests/functional_tests/test_cases/${_type}/${_task}/conf --config-name ${_case} action=run; sleep 1m" $attempt_i $_task $_type $_case
-      #   run_command "pytest tests/functional_tests/test_utils/test_call.py --test_path=tests/functional_tests/test_cases --test_type=${_type} --test_task=${_task} --test_case=${_case}" $attempt_i $_task $_type $_case
-      #   run_command "python run.py --config-path tests/functional_tests/test_cases/${_type}/${_task}/conf --config-name ${_case} action=stop" $attempt_i $_task $_type $_case
-      # fi
+      todo: open this case
+      if [ "${_type}" = "serve" ]; then
+        run_command "python run.py --config-path tests/functional_tests/test_cases/${_type}/${_task}/conf --config-name ${_case} action=run; sleep 1m" $attempt_i $_task $_type $_case
+        run_command "pytest tests/functional_tests/test_utils/test_call.py --test_path=tests/functional_tests/test_cases --test_type=${_type} --test_task=${_task} --test_case=${_case}" $attempt_i $_task $_type $_case
+        run_command "python run.py --config-path tests/functional_tests/test_cases/${_type}/${_task}/conf --config-name ${_case} action=stop" $attempt_i $_task $_type $_case
+      fi
 
       # Ensure that pytest check is completed before deleting the folder
       sleep 10s
@@ -124,9 +131,13 @@ test_task() {
 # Initialize default values
 flaggems="disable"
 hardware="nvidia"
+device="nvidia"
 
 # Define supported hardware options in a list (array)
 supported_hardware=("nvidia" "bi_v150" "cambricon_mlu")
+
+# Define supported device options in a list (array)
+supported_device=("nvidia" "metax")
 
 # Parse command-line arguments
 while [[ "$#" -gt 0 ]]; do
@@ -135,6 +146,7 @@ while [[ "$#" -gt 0 ]]; do
         --task) task="$2"; shift ;;
         --flaggems) flaggems="$2"; shift ;;
         --hardware) hardware="$2"; shift ;;
+        --device) device="$2"; shift ;;
         *) echo "Unknown parameter passed: $1"; exit 1 ;;
     esac
     shift
@@ -160,9 +172,18 @@ fi
 # Convert hardware parameter to lowercase to ensure case-insensitive matching
 hardware=$(echo "$hardware" | tr '[:upper:]' '[:lower:]')
 
+# Convert device parameter to lowercase to ensure case-insensitive matching
+device=$(echo "$device" | tr '[:upper:]' '[:lower:]')
+
 # Validate hardware parameter using the supported hardware list
 if [[ ! " ${supported_hardware[@]} " =~ " $hardware " ]]; then
   echo "Error: --hardware must be one of: ${supported_hardware[*]}"
+  exit 1
+fi
+
+# Validate device parameter using the supported devices list
+if [[ ! " ${supported_device[@]} " =~ " $device " ]]; then
+  echo "Error: --device must be one of: ${supported_device[*]}"
   exit 1
 fi
 
@@ -171,6 +192,7 @@ echo "Type: $type"
 echo "Task: $task"
 echo "Flaggems: $flaggems"
 echo "Hardware: $hardware"
+echo "device: $device"
 
 # Run the tests based on the provided test type and test task
-test_task "$type" "$task" "$flaggems" "$hardware"
+test_task "$type" "$task" "$flaggems" "$hardware" "$device"

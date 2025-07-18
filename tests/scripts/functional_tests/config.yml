@@ -27,6 +27,14 @@ inference:
   #   -tp2
   # qwen3_flaggems:
   #   -tp2
+  metax_deepseek:
+    -tp2
+  metax_qwen3:
+    -tp2
+  metax_deepseek_flaggems:
+    -tp2
+  metax_qwen3_flaggems:
+    -tp2
 
 # TODO: need fix
 # serve:
