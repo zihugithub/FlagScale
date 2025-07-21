@@ -44,10 +44,18 @@ test_task() {
 
   # Check if the test type is "inference-pipeline"
   if [ "$_type" == "inference-pipeline" ]; then
-      _case_name="${_hardware}"
-      # If flaggems is enabled, append "_flaggems" to the case name
-      if [ "$_flaggems" == "enable" ]; then
-          _case_name="${_case_name}_flaggems"
+      if [ "$_device" != "nvidia" ];then
+          _case_name="${_device}_${_hardware}"
+          # If flaggems is enabled, append "_flaggems" to the case name
+          if [ "$_flaggems" == "enable" ]; then
+              _case_name="${_case_name}_flaggems"
+          fi
+      else
+          _case_name="${_hardware}"
+          # If flaggems is enabled, append "_flaggems" to the case name
+          if [ "$_flaggems" == "enable" ]; then
+              _case_name="${_case_name}_flaggems"
+          fi
       fi
       _cases=($_case_name)  # Create an array with the case name
       case_path="tests/functional_tests/test_cases/inference-pipeline/${_case_name}"
