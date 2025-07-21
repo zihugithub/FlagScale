@@ -31,6 +31,7 @@ test_task() {
   local _flaggems=$3
   local _hardware=$4
   local _device=$5
+  local _model=$_task
 
   # Define test types
   if [[ "$_type" =~ "inference" ]];then
@@ -63,8 +64,8 @@ test_task() {
 
       # Replace the model and tokenizer paths in the configuration file
       # Using sed to replace the 2nd and 3rd lines of the YAML file
-      sed -i "2s|.*|  model: /home/gitlab-runner/data/${_task}|" "$case_model_path"
-      sed -i "3s|.*|  tokenizer: /home/gitlab-runner/data/${_task}|" "$case_model_path"
+      sed -i "2s|.*|  model: /home/gitlab-runner/data/${_model}|" "$case_model_path"
+      sed -i "3s|.*|  tokenizer: /home/gitlab-runner/data/${_model}|" "$case_model_path"
   fi
 
   # Convert the parsed test cases to an array
