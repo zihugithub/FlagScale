@@ -1,10 +1,10 @@
 defaults:
   - _self_
-  - inference: bi_v150_flaggems
+  - inference: metax_bi_v150_flaggems
 
 experiment:
-  exp_name: bi_v150_flaggems
-  exp_dir: tests/functional_tests/test_cases/inference-pipeline/metax_bi_v150_flaggems/results_test/bi_v150_flaggems
+  exp_name: metax_bi_v150_flaggems
+  exp_dir: tests/functional_tests/test_cases/inference-pipeline/metax_bi_v150_flaggems/results_test/metax_bi_v150_flaggems
   task:
     type: inference
     backend: vllm

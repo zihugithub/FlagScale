@@ -1,10 +1,10 @@
 defaults:
   - _self_
-  - inference: cambricon_mlu_flaggems
+  - inference: metax_cambricon_mlu
 
 experiment:
-  exp_name: cambricon_mlu_flaggems
-  exp_dir: tests/functional_tests/test_cases/inference-pipeline/metax_cambricon_mlu_flaggems/results_test/cambricon_mlu_flaggems
+  exp_name: metax_cambricon_mlu
+  exp_dir: tests/functional_tests/test_cases/inference-pipeline/metax_cambricon_mlu/results_test/metax_cambricon_mlu
   task:
     type: inference
     backend: vllm
@@ -21,7 +21,6 @@ experiment:
     EXPERT_PARALLEL_EN: true
     VLLM_GRAPH_DEBUG: false
     VLLM_AVG_MOE_EN: 1
-    USE_FLAGGEMS: "true"
 
 action: run
 

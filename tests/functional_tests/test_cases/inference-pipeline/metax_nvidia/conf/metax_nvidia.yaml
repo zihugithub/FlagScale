@@ -1,10 +1,10 @@
 defaults:
   - _self_
-  - inference: nvidia
+  - inference: metax_nvidia
 
 experiment:
-  exp_name: nvidia
-  exp_dir: tests/functional_tests/test_cases/inference-pipeline/nvidia/results_test/nvidia
+  exp_name: metax_nvidia
+  exp_dir: tests/functional_tests/test_cases/inference-pipeline/metax_nvidia/results_test/metax_nvidia
   task:
     type: inference
     backend: vllm
