@@ -1,5 +1,7 @@
 #!/bin/bash
 
+set -eo pipefail
+
 echo "The current directory is: $(pwd)"
 
 # Function to execute a command and handle failures
@@ -74,7 +76,7 @@ test_task() {
   # Check if _cases is not an empty list
   if [ ${#_cases[@]} -eq 0 ]; then
     echo "No test cases found for task '$_task' with test type '$_type'. Exiting."
-    exit 0
+    exit 1
   fi
 
   # Loop through each test case, remove leading '-', and run the test
@@ -92,7 +94,7 @@ test_task() {
       wait_for_gpu
 
       # Remove previous results if they exist
-      if [ "${_type}" = "train" ] || [ "${_type}" = "hetero_train" ] || [ "${_type}" = "inference" ]; then
+      if [ "${_type}" = "train" ] || [ "${_type}" = "hetero_train" ] || [ "${_type}" = "inference" ] || [ "${_type}" = "rl" ]; then
         result_path="tests/functional_tests/test_cases/${_type}/${_task}/results_test/${_case}"
         if [ -d "$result_path" ]; then
           rm -r "$result_path"
@@ -113,7 +115,12 @@ test_task() {
 
       if [ "${_type}" = "inference" ]; then
         # TODO: rm when fix bug about "before start"
-        source /root/miniconda3/bin/activate flagscale-inference
+        if [ "${_hardware}" = "nvidia" ]; then
+          source /root/miniconda3/bin/activate flagscale-inference
+        fi
+        if [ "${_hardware}" = "metax" ]; then
+          source /opt/conda/bin/activate flagscale-inference
+        fi
         run_command "python run.py --config-path tests/functional_tests/test_cases/${_type}/${_task}/conf --config-name ${_case} action=test" $attempt_i $_task $_type $_case
         run_command "pytest -s tests/functional_tests/test_utils/test_result.py::test_inference_equal --test_path=tests/functional_tests/test_cases --test_type=${_type} --test_task=${_task} --test_case=${_case}" $attempt_i $_task $_type $_case
       fi
@@ -132,6 +139,11 @@ test_task() {
       #   run_command "python run.py --config-path tests/functional_tests/test_cases/${_type}/${_task}/conf --config-name ${_case} action=stop" $attempt_i $_task $_type $_case
       # fi
 
+      if [ "${_type}" = "rl" ]; then
+        run_command "python run.py --config-path tests/functional_tests/test_cases/${_type}/${_task}/conf --config-name ${_case} action=test" $attempt_i $_task $_type $_case
+        run_command "pytest -s tests/functional_tests/test_utils/test_result.py::test_rl_equal --test_path=tests/functional_tests/test_cases --test_type=${_type} --test_task=${_task} --test_case=${_case}" $attempt_i $_task $_type $_case
+      fi
+
       # Ensure that pytest check is completed before deleting the folder
      sleep 10s
     done
@@ -145,7 +157,7 @@ hardware="nvidia"
 device="nvidia"
 
 # Define supported hardware options in a list (array)
-supported_hardware=("nvidia" "bi_v150" "cambricon_mlu")
+supported_hardware=("nvidia" "bi_v150" "cambricon_mlu", "metax")
 
 # Define supported device options in a list (array)
 supported_device=("nvidia" "metax")
