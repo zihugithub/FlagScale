@@ -30,14 +30,8 @@ def check_and_reset_deploy_config(config: DictConfig) -> None:
 
 @hydra.main(version_base=None, config_name="config")
 def main(config: DictConfig) -> None:
-    print("00000000000000000000000")
-    print(config)
-    print("1111111111111111111")
     check_and_reset_deploy_config(config)
-    print(config)
     task_type = config.experiment.task.get("type", "train")
-    print("222222222222222222222222")
-    print(task_type)
     if task_type == "train":
         if config.action == "auto_tune":
             # For MPIRUN scene, just one autotuner process.
@@ -66,18 +60,17 @@ def main(config: DictConfig) -> None:
             else:
                 raise ValueError(f"Unknown action {config.action}")
     elif task_type == "inference":
-        print("33333333333333333333")
-        # runner = SSHInferenceRunner(config)
-        # if config.action == "run":
-        #     runner.run()
-        # elif config.action == "dryrun":
-        #     runner.run(dryrun=True)
-        # elif config.action == "test":
-        #     runner.run(with_test=True)
-        # elif config.action == "stop":
-        #     runner.stop()
-        # else:
-        #     raise ValueError(f"Unknown action {config.action}")
+        runner = SSHInferenceRunner(config)
+        if config.action == "run":
+            runner.run()
+        elif config.action == "dryrun":
+            runner.run(dryrun=True)
+        elif config.action == "test":
+            runner.run(with_test=True)
+        elif config.action == "stop":
+            runner.stop()
+        else:
+            raise ValueError(f"Unknown action {config.action}")
     elif task_type == "serve":
         if config.action == "auto_tune":
             # For MPIRUN scene, just one autotuner process.
