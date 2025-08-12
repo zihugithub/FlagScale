@@ -29,6 +29,6 @@ experiment:
 
 action: run
 
-# hydra:
-#   run:
-#     dir: ${experiment.exp_dir}/hydra
+hydra:
+  run:
+    dir: ${experiment.exp_dir}/hydra

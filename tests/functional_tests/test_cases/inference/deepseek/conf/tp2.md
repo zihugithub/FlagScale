@@ -16,16 +16,21 @@ defaults:
 - `task` 任务类型及实现方式
   - `type` 明确任务模式
   - `backend` 指定后端框架(如：使用 vllm 作为推理引擎)
-  - `entrypoint` 待定
-- `runner` 运行时环境
+  - `entrypoint` 指定主程序入口文件
+- `runner` 运行时环境（用于定义实验执行时的运行环境和资源管理策略）
   - `hostfile` 不依赖 MPI/Hostfile 进行进程间通信（由 PyTorch NCCL 直接处理）
+    - `null` 未指定主机文件（hostfile），即不使用分布式计算中的多节点配置
+    - 单卡或单机训练/推理时，通常不需要设置此参数；若涉及多机集群部署，则需提供包含各节点IP地址等信息的文件来实现跨机器通信
+    - 设为 null 表明当前任务仅在一个计算节点上运行
 - `cmds` 预执行的命令序列
   - `before_start` 主程序启动前运行的命令序列
 - `envs` 系统级环境变量注入
   - `HYDRA_FULL_ERROR` Hydra严格模式：任何未识别的配置项立即报错退出
   - `CUDA_VISIBLE_DEVICES` 指定启用的GPU显卡
-  - `CUDA_DEVICE_MAX_CONNECTIONS` 限制每个设备的物理连接数（以提高稳定性）
-  - `CUBLAS_WORKSPACE_CONFIG` CuBLAS库的工作内存池大小配置（提升矩阵运算效率）
+  - `CUDA_DEVICE_MAX_CONNECTIONS` 指定每个设备（GPU）的物理连接数
+    - 设为 1 可规避因过多上下文切换导致的内存碎片化问题，适合高频次小规模推理任务
+  - `CUBLAS_WORKSPACE_CONFIG: ":4096:8"` CuBLAS库的工作内存池大小配置（提升矩阵运算效率）
+    - `:4096:8` 采用三元组格式 <size>:<count> , 表示为每个线程块预分配 4096KB 的工作缓存区，并允许最多 8个并行请求
   - `NCCL_ALGO` 指定多机通信拓扑采用的算法（减少带宽瓶颈）
   - `NVTE_APPLY_QK_LAYER_SCALING: 0` 控制 NeMo VTE插件查询键层缩放功能（0 关闭）
   - `NVTE_ALLOW_NONDETERMINISTIC_ALGO: 0` 强制确定性计算以保证可复现性
