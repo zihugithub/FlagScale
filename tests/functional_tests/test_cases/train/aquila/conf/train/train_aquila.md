@@ -145,7 +145,26 @@ Transformer架构基于自注意力机制且不依赖递归结构，无法天然
 - `untie_embeddings_and_output_weights` 用于控制解绑嵌入矩阵与输出层权重
   - `权重绑定:` 模型共享输入词嵌入矩阵和输出层的线性投影权重的一种设计
   - 某些架构（如张量并行）要求各GPU卡上的输出维度必须严格匹配物理设备数量。此时，若保持权重绑定会导致跨设备的维度不一致错误。通过解耦参数，可将输出层的参数分布到多个计算节点上，解决并行度冲突问题
-- `init_method_std`
+# 正则化与初始化策略
+- `init_method_std` 指定初始化方法的标准差
+  - `0.02` 属于保守策略，既避免过大初始值引发激活爆炸，又给予足够自由度供优化器探索
+- `attention_dropout` 通常用于控制对注意力权重矩阵的随机屏蔽概率
+  - 在计算得到的注意力权重矩阵上应用Dropout操作
+  - 通过随机屏蔽部分注意力分数来防止过拟合，增强模型的泛化能力
+  - `0.0` 在注意力机制中不应用Dropout操作,无论训练还是推理，模型始终使用完整的注意力权重
+- `hidden_dropout` 用于控制神经网络中间层的随机失活概率
+  - `0` 所有神经元均保留其输出值，不会在训练时被随机置零
+    - 对应的Dropout层不会修改输入张量的任何元素，直接传递原始数据
+- `weight_decay` 设置正则化的系数
+  - 在损失函数中增加模型参数的平方和惩罚项,迫使权重趋向于更小的值，从而降低模型复杂度并防止过拟合
+  - `0.1` 对权重的惩罚强度较高, 更强地限制权重增长，使模型更倾向于选择较小的参数值以最小化总损失
+- `clip_grad`
+- ``
+- ``
+- ``
+- ``
+- ``
+- ``
 
 ```yaml
 # model:
@@ -166,10 +185,10 @@ Transformer架构基于自注意力机制且不依赖递归结构，无法天然
   # normalization: RMSNorm
   # untie_embeddings_and_output_weights: true
   # init_method_std: 0.02
-  attention_dropout: 0.0
-  hidden_dropout: 0.0
-  weight_decay: 0.1
-  clip_grad: 1.0
+  # attention_dropout: 0.0
+  # hidden_dropout: 0.0
+  # weight_decay: 0.1
+  # clip_grad: 1.0
   train_iters: 10
   micro_batch_size: 4
   global_batch_size: 1024
