@@ -29,20 +29,20 @@ jobs:
 
     steps:
       - name: Checkout Code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v4  # 负责将远程仓库的内容克隆到本地工作目录
         with:
-          repository: ${{ github.event.pull_request.head.repo.full_name }}
-          ref: ${{ github.event.pull_request.head.ref }}
-          ssh-strict: true
-          ssh-user: git
-          persist-credentials: true
-          clean: true
-          sparse-checkout-cone-mode: true
-          fetch-tags: false
-          show-progress: true
-          lfs: false
-          submodules: false
-          set-safe-directory: true
+          repository: ${{ github.event.pull_request.head.repo.full_name }} # 当前触发本次构建的那个 Pull Request 所对应的源仓库完整地址
+          ref: ${{ github.event.pull_request.head.ref }} # 指定切换的 commit hash
+          ssh-strict: true # 启用 SSH HostKey 校验机制
+          ssh-user: git # 设定 SSH 用户名
+          persist-credentials: true # 保留凭证信息供后续步骤复用
+          clean: true # 先清空工作区再检出新内容，保证环境干净
+          sparse-checkout-cone-mode: true # 只下载必要的部分而非整个仓库
+          fetch-tags: false # 不获取标签信息，关闭它可以节省时间和资源
+          show-progress: true # 显示进度条。让 CI 日志更直观地展示 clone/checkout 的过程进度，便于调试耗时问题
+          lfs: false # 禁用 Git LFS
+          submodules: false # 项目依赖外部子模块仓库使时，设为true
+          set-safe-directory: true # 允许后续步骤在此目录下执行脚本而不会因权限问题被拦截
 
       - name: Run Functional Test
         run: |
