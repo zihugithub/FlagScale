@@ -1,0 +1,5 @@
+benchmark_throughput:
+  qwen3-metax:
+    -4b-tp2
+  qwen3-flaggems-metax:
+    -4b-tp2
