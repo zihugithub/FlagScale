@@ -1,0 +1,9 @@
+==================================================
+PERFORMANCE METRICS
+==================================================
+Throughput: 21.44 tokens/second
+Total Latency: 9.88 seconds
+Total Tokens Processed: 211
+Input Tokens: 11
+Output Tokens: 200
+Average CPU utilization rate: 62.4%

@@ -75,7 +75,7 @@ class ThroughputCalculator:
             gpu_memory = torch.cuda.memory_allocated() / (1024 ** 3)  # GB
 
         # Obtain CPU utilization rate
-        cpu_usage = psutil.cpu_percent(interval=None)
+        cpu_usage = psutil.cpu_percent(interval=duration)
 
         return PerformanceMetrics(
             throughput=throughput,
@@ -98,12 +98,12 @@ class ThroughputCalculator:
         print(f"Input Tokens: {metrics.input_tokens}")
         print(f"Output Tokens: {metrics.output_tokens}")
         print(f"GPU Memory Usage: {metrics.gpu_memory_usage:.2f} GB")
-        print(f"CPU Utilization: {metrics.cpu_utilization:.1f}%")
+        print(f"Average CPU utilization rate: {metrics.cpu_utilization:.1f}%")
         print("="*50)
 
 def enhanced_inference(cfg) -> PerformanceMetrics:
     """Enhanced inference function, including throughput calculation"""
-
+    
     # Step 1: Analyze the configuration
     try:
         generate_cfg = cfg.get("generate", {})
@@ -199,7 +199,7 @@ def benchmark_multiple_runs(cfg, num_runs: int = 3) -> PerformanceMetrics:
     all_metrics = []
 
     for run in range(num_runs):
-        print(f"\n&#128260; Run {run + 1}/{num_runs}")
+        print(f"\nRun {run + 1}/{num_runs}")
         metrics = enhanced_inference(cfg)
         all_metrics.append(metrics)
 

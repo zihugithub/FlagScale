@@ -66,7 +66,7 @@ test_task() {
 
       if [ "${_type}" = "benchmark_throughput" ]; then
         run_command "python run.py --config-path tests/benchmarks/test_cases/${_type}/${_task}/conf --config-name ${_case} action=test" $attempt_i $_task $_type $_case
-        # run_command "pytest -s tests/functional_tests/test_utils/test_result.py::test_inference_equal --test_path=tests/functional_tests/test_cases --test_type=${_type} --test_task=${_task} --test_case=${_case}" $attempt_i $_task $_type $_case
+        run_command "pytest -s tests/benchmarks/test_utils/test_result.py::test_throughput_equal --test_path=tests/benchmarks/test_cases --test_type=${_type} --test_task=${_task} --test_case=${_case}" $attempt_i $_task $_type $_case
       fi
 
       # Ensure that pytest check is completed before deleting the folder

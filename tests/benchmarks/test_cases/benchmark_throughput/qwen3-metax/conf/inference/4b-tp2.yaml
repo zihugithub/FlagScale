@@ -1,5 +1,5 @@
 use_benchmark: true # Throughput multiple run tests, Defalut: false
-num_runs: 2 # Set throughput test frequency, default: 3
+num_runs: 10 # Set throughput test frequency, default: 3
 
 llm:
   model: /home/gitlab-runner/data/Qwen3-4B
@@ -17,4 +17,5 @@ generate:
     top_p: 0.95
     top_k: 50
     temperature: 0.8
+    max_tokens: 100 # Set the max number of tokens
     seed: 1234
