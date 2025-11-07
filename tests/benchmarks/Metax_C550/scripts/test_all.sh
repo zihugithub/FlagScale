@@ -1,0 +1,22 @@
+#!/bin/bash
+
+# Run each command and capture its return value
+commands=(
+    # For benchmark_throughput
+    "tests/benchmarks/Metax_C550/scripts/test_task.sh --type benchmark_throughput --task qwen3"
+    "tests/benchmarks/Metax_C550/scripts/test_task.sh --type benchmark_throughput --task qwen3-flaggems"
+)
+
+for cmd in "${commands[@]}"; do
+    # Execute the command
+    $cmd
+    # Capture the return value
+    return_value=$?
+    # Check if the return value is non-zero (an error occurred)
+    if [ $return_value -ne 0 ]; then
+        # Output the error message and the failing command
+        echo "Error: Command '$cmd' failed"
+        # Throw an exception by exiting the script with a non-zero status
+        exit 1
+    fi
+done

@@ -1,5 +1,5 @@
 benchmark_throughput:
-  qwen3-metax:
+  qwen3:
     -4b-tp2
-  qwen3-flaggems-metax:
+  qwen3-flaggems:
     -4b-tp2

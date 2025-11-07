@@ -202,30 +202,37 @@ def test_throughput_equal(test_path: str, test_type: str, test_task: str, test_c
     print("\nResult checking")
     all_throughput = []
 
-    if segments:
+    if summary_data:
         # Multiple throughput tests run
-        for seg_name, seg_lines in segments.items():
+        for seg_lines in segments.values():
             throughput = extract_throughput(seg_lines)
             all_throughput.extend(throughput)
-        print("Result summary: ", segments)
-    elif test_dataset and not summary_data:
+        print("\nResult summary(multiple): ", summary_data)
+    elif not summary_data and test_dataset:
         # Single run throughput test
         summary_data = test_dataset
         seg_lines = test_dataset
         throughput = extract_throughput(seg_lines)
         all_throughput.extend(throughput)
-        print("Result summary: ", seg_lines)
+        print("\nResult summary(single-t): ", seg_lines)
+    elif not summary_data and len(segments) == 1:
+        # Single run throughput test
+        summary_data = segments
+        seg_lines = segments
+        throughput = extract_throughput(seg_lines)
+        all_throughput.extend(throughput)
+        print("\nResult summary(single-e): ", seg_lines)
     else:
         print("Failed to identify valid data segments.")
 
-    print("Gold Result: ", gold_value_lines)
+    print("\nGold Result: ", gold_value_lines)
 
     if not all_throughput:
-        print("Failed to extract any throughput data.")
-        pytest.fail("Failed to extract throughput data.")
+         print("Failed to extract any throughput data.")
+         pytest.fail("Failed to extract throughput data.")
 
     trimmed_data, mean, variance, std_dev = calculate_statistics(all_throughput)
-    
+
     gold_throughput = extract_throughput(gold_value_lines)
     result_throughput = extract_throughput(summary_data)
 

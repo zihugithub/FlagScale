@@ -21,17 +21,14 @@ run_command() {
   fi
 }
 
-source tests/benchmarks/scripts/_gpu_check.sh
-
-# Path to the YAML configuration file
-CONFIG_FILE="tests/benchmarks/scripts/config.yml"
+source tests/benchmarks/scripts/_metax_c550_check.sh
 
 # Function to parse the configuration file and run tests
 test_task() {
   local _type=$1
   local _task=$2
   # Use parse_config.py to parse the YAML file with test type and test task
-  local _cases=$(python tests/benchmarks/scripts/parse_config.py --config $CONFIG_FILE --type $_type --task $_task)
+  local _cases=$(python tests/benchmarks/${firm}/scripts/parse_config.py --config $CONFIG_FILE --type $_type --task $_task)
 
   # Convert the parsed test cases to an array
   IFS=' ' read -r -a _cases <<< "$_cases"
@@ -58,15 +55,15 @@ test_task() {
 
       # Remove previous results if they exist
       if [ "${_type}" = "benchmark_throughput" ]; then
-        result_path="tests/benchmarks/test_cases/${_type}/${_task}/results_test/${_case}"
+        result_path="tests/benchmarks/${firm}/${_type}/${_task}/results_test/${_case}"
         if [ -d "$result_path" ]; then
           rm -r "$result_path"
         fi
       fi
 
       if [ "${_type}" = "benchmark_throughput" ]; then
-        run_command "python run.py --config-path tests/benchmarks/test_cases/${_type}/${_task}/conf --config-name ${_case} action=test" $attempt_i $_task $_type $_case
-        run_command "pytest -s tests/benchmarks/test_utils/test_result.py::test_throughput_equal --test_path=tests/benchmarks/test_cases --test_type=${_type} --test_task=${_task} --test_case=${_case}" $attempt_i $_task $_type $_case
+        run_command "python run.py --config-path tests/benchmarks/${firm}/${_type}/${_task}/conf --config-name ${_case} action=test" $attempt_i $_task $_type $_case
+        run_command "pytest -s tests/benchmarks/${firm}/test_utils/test_result.py::test_throughput_equal --test_path=tests/benchmarks/${firm} --test_type=${_type} --test_task=${_task} --test_case=${_case}" $attempt_i $_task $_type $_case
       fi
 
       # Ensure that pytest check is completed before deleting the folder
@@ -97,9 +94,20 @@ if [ -z "$task" ]; then
   exit 1
 fi
 
+if [[ "$0" =~ .*/([^/]+)/scripts/test_task\.sh ]]; then
+  firm="${BASH_REMATCH[1]}"
+else
+  echo "Please ensure the integrity of the directory results"
+  echo "  e.g. 'tests/benchmarks/Metax_C550/scripts/test_task.sh'"
+fi
+
 # Print final parameter values for confirmation
 echo "Type: $type"
 echo "Task: $task"
+echo "Firm: $firm"
+
+# Path to the YAML configuration file
+CONFIG_FILE="tests/benchmarks/${firm}/scripts/config.yml"
 
 # Run the tests based on the provided test type and test task
 test_task "$type" "$task"

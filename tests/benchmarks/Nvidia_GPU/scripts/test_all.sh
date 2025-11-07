@@ -3,8 +3,8 @@
 # Run each command and capture its return value
 commands=(
     # For benchmark_throughput
-    "tests/benchmarks/scripts/test_task.sh --type benchmark_throughput --task qwen3-metax"
-    "tests/benchmarks/scripts/test_task.sh --type benchmark_throughput --task qwen3-flaggems-metax"
+    "tests/benchmarks/Nvidia_GPU/scripts/test_task.sh --type benchmark_throughput --task qwen3"
+    "tests/benchmarks/Nvidia_GPU/scripts/test_task.sh --type benchmark_throughput --task qwen3-flaggems"
 )
 
 for cmd in "${commands[@]}"; do
