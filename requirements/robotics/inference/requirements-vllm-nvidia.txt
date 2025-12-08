@@ -1,0 +1,22 @@
+# =============================================
+# Inference-Specific Dependencies
+# Supported Python: 3.9, 3.10, 3.11, 3.12
+# =============================================
+
+# Build & Release Automation
+setuptools_scm>=8.1.0,<9.0.0       # Version control integration
+scikit-build                       # Enhanced build system for Python packages
+scikit-build-core                  # Modern build backend for scikit-build
+
+# gRPC Core Library
+grpcio>=1.76.0,<1.80.0             # High-performance RPC framework
+
+# Asynchronous Web Framework
+quart>=0.20.0,<0.28.0              # ASGI web framework (for high-concurrency inference endpoints)
+
+# Distributed Computing
+ray[default]                      # General-purpose distributed framework
+
+# Reinforcement Learning and Tree Manipulation
+gymnasium                         # Reinforcement learning environment library
+dm-tree                           # Tree manipulation utilities for reinforcement learning

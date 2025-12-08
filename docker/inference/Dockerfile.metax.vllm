@@ -1,0 +1,107 @@
+ARG MACA_VERSION=ai3.0.0.5
+ARG TORCH_VERSION=2.6
+ARG PYTHON_VERSION=310
+FROM cr.metax-tech.com/public-ai-release/maca/modelzoo.llm.vllm:maca.${MACA_VERSION}-torch${TORCH_VERSION}-py${PYTHON_VERSION}-ubuntu22.04-amd64 AS build_base
+
+##############################################################################
+# Temporary Installation Directory
+##############################################################################
+WORKDIR /workspace
+
+##############################################################################
+# Set default shell
+##############################################################################
+SHELL ["/bin/bash", "-c"]
+
+##############################################################################
+# Install Basic Utilities
+##############################################################################
+RUN apt-get update && \
+    apt-get install -y --no-install-recommends git vim curl wget && \
+    rm -rf /var/lib/apt/lists/*
+
+##############################################################################
+# cmake >= 4.03
+##############################################################################
+RUN /opt/conda/bin/pip3 install cryptography gitpython cmake
+
+##############################################################################
+# used to generate cmakecache files
+# install tooklit Only, IGNORE driver or samples
+##############################################################################
+ARG CUDA_VERSION=11.6.0
+ARG TOOLKIT_VERSION=11.6.0_510.39.01
+RUN wget https://developer.download.nvidia.com/compute/cuda/${CUDA_VERSION}/local_installers/cuda_${TOOLKIT_VERSION}_linux.run && \
+    sh cuda_${TOOLKIT_VERSION}_linux.run --silent --toolkit && \
+    rm cuda_${TOOLKIT_VERSION}_linux.run
+
+# Inference Environment: Dependency Installation
+RUN pip install -r ./requirements/requirements-base.txt
+
+
+##############################################################################
+# Clear
+##############################################################################
+RUN apt-get clean && \
+        rm -rf /var/lib/apt/lists/* && \
+        rm -rf /root/.cache/*
+
+FROM build_base AS build_inference
+##############################################################################
+# Clone FlagScale
+##############################################################################
+ARG FLAGSCALE_REPO=https://github.com/flagos-ai/FlagScale.git
+ARG FLAGSCALE_BRANCH=main
+ARG FLAGSCALE_COMMIT=HEAD
+RUN git clone -b ${FLAGSCALE_BRANCH} ${FLAGSCALE_REPO} || \
+    { echo "Error: Failed to clone the repository or the branch IMAGE_250515 does not exist."; exit 1; }
+
+WORKDIR /workspace/FlagScale
+
+RUN git checkout ${FLAGSCALE_COMMIT} || \
+    { echo "Error: Failed to checkout commit ${FLAGSCALE_COMMIT}. Please ensure the commit ID is correct and exists in the repository."; exit 1; }
+
+##############################################################################
+# FlagScale: Building the flagscale-inference Conda Environment
+##############################################################################
+# Load conda environment
+RUN source /etc/profile.d/conda.sh
+
+# Create and activate Conda virtual environment
+# The Python version used has been written into the conda config
+RUN /opt/conda/bin/conda create --name "flagscale-inference" --clone base
+
+# Inference Environment: Dependency Installation
+RUN source /opt/conda/bin/activate flagscale-inference && \
+    pip install -r ./requirements/requirements-base.txt
+
+# Install torch
+ARG PYTORCH_VER="2.6.0+metax3.0.0.3"
+ARG TORCHAUDIO_VER="2.4.1+metax3.0.0.3"
+ARG TORCHVISION_VER="0.15.1+metax3.0.0.3"
+
+RUN source /opt/conda/bin/activate flagscale-inference && \
+    pip install \
+        torch==${PYTORCH_VER} \
+        torchaudio==${TORCHAUDIO_VER} \
+        torchvision==${TORCHVISION_VER} \
+        -i https://repos.metax-tech.com/r/maca-pypi/simple \
+        --trusted-host repos.metax-tech.com
+
+##############################################################################
+# Install flagscale-inference requirements
+##############################################################################
+RUN ./install/inference/install-metax-vllm.sh --env inference
+
+##############################################################################
+# FlagScale: Base Environment Installation Guide
+##############################################################################
+FROM build_base AS final
+
+COPY --from=build_inference /opt/conda/envs/flagscale-inference /opt/conda/envs/flagscale-inference
+
+##############################################################################
+# Ensure that no matter what bash enters interactive mode
+# it can enter the same environment
+##############################################################################
+RUN echo "conda activate base" >> ~/.bashrc

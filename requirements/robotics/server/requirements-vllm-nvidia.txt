@@ -1,0 +1,30 @@
+# =============================================
+# Core Dependencies (General Purpose)
+# Purpose: Support fundamental operations for model handling and data processing
+# Supported Python: 3.9, 3.10, 3.11, 3.12
+# =============================================
+
+# Media Processing & I/O Operations
+diffusers                             # Hugging Face diffusion models library
+translate                             # Machine translation utilities
+imageio                               # Image/video reading/writing library
+python-multipart                      # Multipart form data handler (required by Flask file uploads)
+imageio[ffmpeg]                       # Extended video support via FFmpeg integration
+ks3sdk                                # Kingsoft Cloud Storage SDK
+pyarrow                               # High-performance columnar in-memory analytics engine
+pandas                                # Data manipulation and analysis foundational library
+
+# =============================================
+# Robotics Serving Stack
+# Purpose: Enable robust API development and real-time robotic system interactions
+# Note: All components are compatible with ASGI/WSGI web servers
+# =============================================
+
+# Web Framework & CORS Management
+flask                                 # Lightweight WSGI web application framework
+flask_cors                            # Cross-Origin Resource Sharing extension for Flask
+
+# Performance Monitoring & Logging
+tqdm_loggable                         # TQDM progress bars with logging capabilities
+types_boto3_s3                        # Type hints for AWS S3 boto3 client (improves code quality)
+h5py                                  # HDF5 dataset reader/writer

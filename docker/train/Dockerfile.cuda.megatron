@@ -1,0 +1,134 @@
+##############################################################################
+# FlagScale Train: Base Environment Installation Guide
+##############################################################################
+ARG BASE_IMAGE
+FROM ${BASE_IMAGE} AS build_train
+
+WORKDIR /workspace
+
+##############################################################################
+# Clone FlagScale
+##############################################################################
+ARG FLAGSCALE_REPO=https://github.com/flagos-ai/FlagScale.git
+ARG FLAGSCALE_BRANCH=main
+ARG FLAGSCALE_COMMIT=HEAD
+RUN git clone -b ${FLAGSCALE_BRANCH} ${FLAGSCALE_REPO} || \
+    { echo "Error: Failed to clone the repository or the branch IMAGE_250515 does not exist."; exit 1; }
+
+WORKDIR /workspace/FlagScale
+
+RUN git checkout ${FLAGSCALE_COMMIT} || \
+    { echo "Error: Failed to checkout commit ${FLAGSCALE_COMMIT}. Please ensure the commit ID is correct and exists in the repository."; exit 1; }
+
+##############################################################################
+# FlagScale: Building the flagscale-train Conda Environment
+##############################################################################
+# Load conda environment
+RUN /bin/bash ~/miniconda3/etc/profile.d/conda.sh && \
+    # Accept the TOS from the main channel
+    ~/miniconda3/bin/conda tos accept --override-channels --channel https://repo.anaconda.com/pkgs/main && \
+    # Accept the TOS from the r channel
+    ~/miniconda3/bin/conda tos accept --override-channels --channel https://repo.anaconda.com/pkgs/r
+
+# Create and activate Conda virtual environment
+# The Python version used has been written into the conda config
+RUN ~/miniconda3/bin/conda create --name "flagscale-train" python==3.12 -y 
+
+RUN python -m pip install --upgrade pip
+
+# Install torch
+# Define variables for clarity and maintainability
+ARG PYTORCH_VER="2.7.1+cu128"
+ARG TORCHAUDIO_VER="2.7.1+cu128"
+ARG TORCHVISION_VER="0.22.1+cu128"
+ARG EXTRA_INDEX="https://download.pytorch.org/whl/cu128"
+
+RUN source /root/miniconda3/bin/activate flagscale-train && \
+    pip install \
+        torch==$PYTORCH_VER \
+        torchaudio==$TORCHAUDIO_VER \
+        torchvision==$TORCHVISION_VER \
+        --extra-index-url $EXTRA_INDEX
+
+# Train Environment: Dependency Installation
+RUN source /root/miniconda3/bin/activate flagscale-train && \
+    pip install -r ./requirements/requirements-base.txt
+
+RUN source /root/miniconda3/bin/activate flagscale-train && \
+    pip install -r ./requirements/robotics/train/requirements-megatron-nvidia.txt
+
+# Training Environment: TransformerEngine Installation
+ARG TRANSFORMER_ENGINE_COMMIT="e9a5fa4e"
+RUN source /root/miniconda3/bin/activate flagscale-train && \
+    git clone --recursive https://github.com/NVIDIA/TransformerEngine.git && \
+    cd TransformerEngine && \
+    git checkout ${TRANSFORMER_ENGINE_COMMIT}  && \
+    pip install --no-build-isolation . -vvv  && \
+    cd .. && \
+    rm -r ./TransformerEngine
+
+# Training Environment: Flash Attention Installation
+ARG FLASH_ATTN_VERSION="2.8.0.post2"
+RUN source /root/miniconda3/bin/activate flagscale-train && \
+    # Get cuda|torch|python|cxx versions
+    cu=$(nvcc --version | grep 'Cuda compilation tools' | awk '{print $5}' | cut -d '.' -f 1) && \
+    torch=$(pip show torch | grep Version | awk '{print $2}' | cut -d '+' -f 1 | cut -d '.' -f 1,2) && \
+    cp=$(python3 --version | awk '{print $2}' | awk -F. '{print $1$2}') && \
+    cxx=$(g++ --version | grep 'g++' | awk '{print $3}' | cut -d '.' -f 1) && \
+    flash_attn_version="${FLASH_ATTN_VERSION}" && \
+    echo "flash-attn not found or outdated. Installing v${flash_attn_version}..." && \
+    WHEEL_FILENAME="flash_attn-${flash_attn_version}+cu${cu}torch${torch}cxx${cxx}abiFALSE-cp${cp}-cp${cp}-linux_x86_64.whl" && \
+    DOWNLOAD_URL="https://github.com/Dao-AILab/flash-attention/releases/download/v${flash_attn_version}/${WHEEL_FILENAME}" && \
+    wget --continue --timeout=60 --no-check-certificate --tries=5 --waitretry=10 -O "${WHEEL_FILENAME}" "${DOWNLOAD_URL}" && \
+    pip install --break-system-packages --no-cache-dir "${WHEEL_FILENAME}" && \
+    rm -rf "${WHEEL_FILENAME}"
+
+# Training Environment: GROUPED GEMM Installation
+ARG GROUPED_GEMM_VERSION="1.1.4.post6"
+RUN source /root/miniconda3/bin/activate flagscale-train && \
+    # Get cuda|torch|python|cxx versions
+    cu=$(nvcc --version | grep 'Cuda compilation tools' | awk '{print $5}' | cut -d '.' -f 1) && \
+    torch=$(pip show torch | grep Version | awk '{print $2}' | cut -d '+' -f 1 | cut -d '.' -f 1,2) && \
+    cp=$(python3 --version | awk '{print $2}' | awk -F. '{print $1$2}') && \
+    cxx=$(g++ --version | grep 'g++' | awk '{print $3}' | cut -d '.' -f 1) && \
+    grouped_gemm_version="${GROUPED_GEMM_VERSION}" && \
+    echo "grouped_gemm not found or outdated. Installing v${grouped_gemm_version}..." && \
+    WHEEL_FILENAME="nv_grouped_gemm-${grouped_gemm_version}+cu${cu}torch${torch}cxx${cxx}abiTRUE-cp${cp}-cp${cp}-linux_x86_64.whl" && \
+    DOWNLOAD_URL="https://github.com/fanshiqing/grouped_gemm/releases/download/v${grouped_gemm_version}/${WHEEL_FILENAME}" && \
+    wget --continue --timeout=60 --no-check-certificate --tries=5 --waitretry=10 -O "${WHEEL_FILENAME}" "${DOWNLOAD_URL}" && \
+    pip install --break-system-packages --no-cache-dir "${WHEEL_FILENAME}" && \
+    rm -rf "${WHEEL_FILENAME}"
+
+# Training Environment: APEX Installation
+RUN source /root/miniconda3/bin/activate flagscale-train && \
+    git clone https://github.com/NVIDIA/apex && \
+    cd apex && \
+    pip install -v \
+        --disable-pip-version-check \
+        --no-cache-dir \
+        --no-build-isolation \
+        --config-settings='--build-option=--cpp_ext' \
+        --config-settings='--build-option=--cuda_ext' \
+        ./ && \
+    cd .. && \
+    rm -r ./apex
+
+# Used for automatic fault tolerance
+# Set the path to the target Python file
+RUN source /root/miniconda3/bin/activate flagscale-train && \
+    bash -x ./install/train/install-nvidia-megatron.sh \
+        --env train \
+        --torch-ver ${PYTORCH_VER} \
+        --torchaudio-ver ${TORCHAUDIO_VER} \
+        --torchvision-ver ${TORCHVISION_VER} \
+        --extra-index ${EXTRA_INDEX} \
+        --flash-attn-ver ${FLASH_ATTN_VERSION} \
+        --group-gemm-ver ${GROUPED_GEMM_VERSION} \
+        --transformer-engine-commit ${TRANSFORMER_ENGINE_COMMIT}
+
+##############################################################################
+# FlagScale: Base Environment Installation Guide
+##############################################################################
+FROM ${BASE_IMAGE} AS final
+
+COPY --from=build_train /root/miniconda3/envs/flagscale-train /root/miniconda3/envs/flagscale-train

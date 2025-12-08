@@ -1,0 +1,59 @@
+##############################################################################
+# FlagScale RL: Base Environment Installation Guide
+##############################################################################
+ARG BASE_IMAGE
+FROM ${BASE_IMAGE} AS build_rl
+
+WORKDIR /workspace
+
+##############################################################################
+# Clone FlagScale
+##############################################################################
+ARG FLAGSCALE_REPO=https://github.com/flagos-ai/FlagScale.git
+ARG FLAGSCALE_BRANCH=main
+ARG FLAGSCALE_COMMIT=HEAD
+RUN git clone -b ${FLAGSCALE_BRANCH} ${FLAGSCALE_REPO} || \
+    { echo "Error: Failed to clone the repository or the branch IMAGE_250515 does not exist."; exit 1; }
+
+WORKDIR /workspace/FlagScale
+
+RUN git checkout ${FLAGSCALE_COMMIT} || \
+    { echo "Error: Failed to checkout commit ${FLAGSCALE_COMMIT}. Please ensure the commit ID is correct and exists in the repository."; exit 1; }
+
+##############################################################################
+# FlagScale: Building the flagscale-inference Conda Environment
+##############################################################################
+# Load conda environment
+RUN /bin/bash ~/miniconda3/etc/profile.d/conda.sh && \
+    # Accept the TOS from the main channel
+    ~/miniconda3/bin/conda tos accept --override-channels --channel https://repo.anaconda.com/pkgs/main && \
+    # Accept the TOS from the r channel
+    ~/miniconda3/bin/conda tos accept --override-channels --channel https://repo.anaconda.com/pkgs/r
+
+# Create and activate Conda virtual environment
+# The Python version used has been written into the conda config
+RUN ~/miniconda3/bin/conda create --name "flagscale-RL" python==3.10 -y 
+
+RUN python -m pip install --upgrade pip
+
+RUN source /root/miniconda3/bin/activate flagscale-RL && \
+    pip install -r requirements/requirements-base.txt
+
+# RL Environment: VERL Installation
+RUN source /root/miniconda3/bin/activate flagscale-RL && \
+    git clone https://github.com/volcengine/verl.git && \
+    cd verl && \
+    bash scripts/install_vllm_sglang_mcore.sh && \
+    cd .. && \
+    rm -r ./verl
+
+# Install dependencies
+RUN source /root/miniconda3/bin/activate flagscale-RL && \
+    pip install -r requirements/robotics/rl/requirements-verl-nvidia.txt
+
+##############################################################################
+# FlagScale: Base Environment Installation Guide
+##############################################################################
+FROM ${BASE_IMAGE} AS final
+
+COPY --from=build_rl /root/miniconda3/envs/flagscale-RL /root/miniconda3/envs/flagscale-RL

@@ -1,0 +1,87 @@
+##############################################################################
+# FlagScale Inference: Base Environment Installation Guide
+##############################################################################
+ARG BASE_IMAGE
+
+FROM ${BASE_IMAGE} AS build_inference
+
+WORKDIR /workspace
+
+##############################################################################
+# Clone FlagScale
+##############################################################################
+ARG FLAGSCALE_REPO=https://github.com/flagos-ai/FlagScale.git
+ARG FLAGSCALE_BRANCH=main
+ARG FLAGSCALE_COMMIT=HEAD
+RUN git clone -b ${FLAGSCALE_BRANCH} ${FLAGSCALE_REPO} || \
+    { echo "Error: Failed to clone the repository or the branch IMAGE_250515 does not exist."; exit 1; }
+
+WORKDIR /workspace/FlagScale
+
+RUN git checkout ${FLAGSCALE_COMMIT} || \
+    { echo "Error: Failed to checkout commit ${FLAGSCALE_COMMIT}. Please ensure the commit ID is correct and exists in the repository."; exit 1; }
+
+##############################################################################
+# FlagScale: Building the flagscale-inference Conda Environment
+##############################################################################
+# Load conda environment
+RUN /bin/bash ~/miniconda3/etc/profile.d/conda.sh && \
+    # Accept the TOS from the main channel
+    ~/miniconda3/bin/conda tos accept --override-channels --channel https://repo.anaconda.com/pkgs/main && \
+    # Accept the TOS from the r channel
+    ~/miniconda3/bin/conda tos accept --override-channels --channel https://repo.anaconda.com/pkgs/r
+
+# Create and activate Conda virtual environment
+# The Python version used has been written into the conda config
+RUN ~/miniconda3/bin/conda create --name "flagscale-inference" python=$(python --version | awk '{print $2}' | cut -d '.' -f 1,2) -y
+
+RUN python -m pip install --upgrade pip
+
+# Install torch
+ARG PYTORCH_VER="2.7.1+cu128"
+ARG TORCHAUDIO_VER="2.7.1+cu128"
+ARG TORCHVISION_VER="0.22.1+cu128"
+ARG EXTRA_INDEX="https://download.pytorch.org/whl/cu128"
+
+RUN source /root/miniconda3/bin/activate flagscale-inference && \
+    pip install \
+        torch==${PYTORCH_VER} \
+        torchaudio==${TORCHAUDIO_VER} \
+        torchvision==${TORCHVISION_VER} \
+        --extra-index-url ${EXTRA_INDEX}
+
+# Inference Environment: Dependency Installation
+RUN source /root/miniconda3/bin/activate flagscale-inference && \
+    pip install -r ./requirements/requirements-base.txt
+
+RUN source /root/miniconda3/bin/activate flagscale-inference && \
+    pip install -r ./requirements/robotics/inference/requirements-vllm-nvidia.txt
+
+# Inference Environment: VLLM Dependency Installation
+RUN source /root/miniconda3/bin/activate flagscale-inference && \
+    python tools/patch/unpatch.py --backend vllm && \
+    pip install --no-build-isolation -v ./third_party/vllm/.
+
+# Inference Environment: Dependency Installation
+RUN source /root/miniconda3/bin/activate flagscale-inference && \
+    pip install -r ./requirements/robotics/server/requirements-vllm-nvidia.txt
+
+# Inference Environment: Dependency Installation
+RUN source /root/miniconda3/bin/activate flagscale-inference && \
+    bash ./install/inference/install-nvidia-vllm.sh \
+        --env inference --llama-cpp-backend cuda \
+        --torch-ver ${PYTORCH_VER} \
+        --torchaudio-ver ${TORCHAUDIO_VER} \
+        --torchvision-ver ${TORCHVISION_VER} \
+        --extra-index ${EXTRA_INDEX}
+
+# Inference Environment: FlagGems Dependency Installation
+RUN source /root/miniconda3/bin/activate flagscale-inference && \
+    pip install git+https://github.com/FlagOpen/FlagGems.git@v3.0
+
+##############################################################################
+# FlagScale: Base Environment Installation Guide
+##############################################################################
+FROM ${BASE_IMAGE} AS final
+
+COPY --from=build_inference /root/miniconda3/envs/flagscale-inference /root/miniconda3/envs/flagscale-inference

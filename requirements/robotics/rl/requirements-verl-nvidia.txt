@@ -1,0 +1,14 @@
+# =============================================
+# Dependencies for Verl Training Environment
+# Note: Some legacy packages are retained for compatibility reasons
+# Supported Python versions: 3.9, 3.10, 3.11, 3.12
+# =============================================
+
+# Security Encryption Library
+cryptography              # Modern cryptographic toolkit
+
+# Distributed Computing
+ray==2.49.2               # General-purpose distributed framework
+
+# NLP Core Library
+transformers==4.57.3      # HuggingFace model library

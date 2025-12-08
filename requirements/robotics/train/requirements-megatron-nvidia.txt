@@ -1,0 +1,54 @@
+# =============================================
+# Megatron-LM Training Environment Dependencies (Fully Preserved)
+# Note: Some legacy packages are retained for compatibility reasons
+# Supported Python versions: 3.9, 3.10, 3.11, 3.12
+# =============================================
+
+# Backward Compatibility Layer
+six==1.17.0                # Python 2/3 compatibility tool
+mock==5.2.0                # Test double library
+
+# Core Utilities
+PyYaml>=6.0.3,<7.0.0       # Configuration file parser
+regex>=2025.11.3           # Advanced regex engine
+requests>=2.32.5,<3.0.0    # HTTP client
+
+# Scientific Computing
+nltk==3.8.1                # Natural language processing toolkit
+tiktoken>=0.12.0,<0.13.0   # OpenAI official tokenizer implementation
+sentencepiece>=0.2.1,<0.3.0 # Commonly used text tokenizer for HuggingFace
+
+# C++ Integration Layer
+pybind11>=3.0.1,<3.1.0     # Python/C++ binding generator
+
+# Cloud Storage Services
+multi-storage-client>=0.34.0,<0.35.0 # Multi-cloud storage abstraction layer
+boto3==1.40.76       # AWS SDK (compatible with all major cloud providers)
+
+# Web Service Components
+flask>=3.1.2,<4.0.0        # Web framework
+flask_restful>=0.3.10,<0.4.0 # RESTful extension
+aiohttp>=3.10.11,<4.0.0    # Asynchronous HTTP client/server
+
+# Testing Toolchain
+# Asynchronous Testing Suite
+anyio>=4.11.0,<5.0.0       # Asynchronous testing framework
+pytest-asyncio>=1.3.0,<1.4.0 # Pytest + asyncio integration plugin
+pytest-trio>=0.8.0,<0.9.0   # Trio event loop support plugin
+pytest_mock>=3.15.1,<3.16.0 # Mock object generator
+
+# Specialized Testing Tools
+wrapt==2.0.1              # Decorator utility library
+pytest-tornasync==0.6.0.post2 # Tornado asynchronous testing plugin
+PyGithub>=2.5.0,<3.0.0    # GitHub API interaction library
+
+# Data Visualization
+matplotlib>=3.10.7,<4.0.0   # Scientific plotting library
+
+# NLP Core Library
+transformers>=4.57.1,<5.0.0 # HuggingFace model library
+
+# Data Processing Pipeline
+av>=16.0.1,<17.0.0         # Audio/video codec library (for data processing pipelines)
+braceexpand>=0.1.7,<0.2.0  # Brace expansion functionality
+webdataset>=1.0.2,<1.1.0   # Tar-indexed dataset loader
