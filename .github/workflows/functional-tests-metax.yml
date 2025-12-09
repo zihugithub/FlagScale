@@ -18,7 +18,7 @@ jobs:
     runs-on: [self-hosted, Linux, X64, metax-0, gpus-2]
     permissions:
       contents: read
-      pull-requests: read
+      # pull-requests: read
     container:
       env:
         HTTP_PROXY: ${{ secrets.METAX_PROXY }}
