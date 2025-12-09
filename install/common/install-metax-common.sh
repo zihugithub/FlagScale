@@ -1,7 +1,5 @@
 #!/bin/bash
 
-set -e
-
 python -m pip install --upgrade pip
 
 print_help() {

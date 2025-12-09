@@ -1,7 +1,5 @@
 #!/bin/bash
 
-set -e
-
 print_help() {
 cat << EOF
 Usage: $0 [OPTIONS]
