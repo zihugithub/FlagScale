@@ -7,18 +7,18 @@ cat << EOF
 Usage: $0 [OPTIONS]
 
 Options:
-  --env <inference>                  Specify the environment type (required)
+  --env <train>                  Specify the environment type (required)
   --torch-ver <version>              Specify the PyTorch version (e.g., "2.7.1+cu128")
   --torchaudio-ver <version>         Specify the TorchAudio version (e.g., "2.7.1+cu128")
   --torchvision-ver <version>        Specify the TorchVision version (e.g., "0.22.1+cu128")
-  --extra_index <url>                Specify an extra index URL for pip (optional)
+  --extra-index <url>                Specify an extra index URL for pip (optional)
   --flash-attn-ver <version>         Specify the Flash Attention version (e.g., "2.8.0.post2")
   --group-gemm-ver <version>         Specify the Grouped GEMM version (e.g., "1.1.4.post6")
   --transformer-engine-commit <commit> Specify the Transformer Engine commit hash (e.g., "e9a5fa4e")
   -h|--help                          Show this help message and exit
 
 Example:
-  $0 --env "inference" \
+  $0 --env "train" \
       --torch-ver "2.7.1+cu128" --torchaudio-ver "2.7.1+cu128" --torchvision-ver "0.22.1+cu128" --extra-index "https://download.pytorch.org/whl/cu128" \
       --flash-attn-ver "2.8.0.post2" --group-gemm-ver "1.1.4.post6" --transformer-engine-commit "e9a5fa4e"
 EOF
@@ -42,7 +42,7 @@ while [[ "$#" -gt 0 ]]; do
         --torch-ver) PYTORCH_VER="$2"; shift ;;
         --torchaudio-ver) TORCHAUDIO_VER="$2"; shift ;;
         --torchvision-ver) TORCHVISION_VER="$2"; shift ;;
-        --extra_index) EXTRA_INDEX="$2"; shift ;;
+        --extra-index) EXTRA_INDEX="$2"; shift ;;
         --flash-attn-ver) FLASH_ATTN_VERSION="$2"; shift ;;
         --group-gemm-ver) GROUPED_GEMM_VERSION="$2"; shift ;;
         --transformer-engine-commit) TRANSFORMER_ENGINE_COMMIT="$2"; shift ;;
@@ -180,5 +180,36 @@ if [[ $torch_version == *"2.6.0"* ]] || [[ $torch_version == *"2.7.0"* ]]  || [[
         # Directly replace the line without using regex
         sed -i '917s|.*|                    self._remaining_restarts -= 1; self._restart_workers(self._worker_group)|' "$FILE"
         echo "Success: Line 917 replaced."
+    fi
+fi
+
+# Replace the following code with torch version 2.6.0
+if [[ $torch_version == *"2.8.0"* ]];then
+    # Check and replace line 917
+    LINE_917=$(sed -n '917p' "$FILE")
+    EXPECTED_917='                if num_nodes_waiting > 0:'
+
+    if [[ "$LINE_917" != "$EXPECTED_917" ]]; then
+        echo "Error: Line 917 in $FILE does not exactly match '                if num_nodes_waiting > 0:'."
+        exit 1
+    else
+        echo "Line 917 is correct. Proceeding with replacement."
+        # Directly replace the line without using regex
+        sed -i '917s|.*|                if num_nodes_waiting > 0 and self._remaining_restarts > 0:|' "$FILE"
+        echo "Success: Line 917 replaced."
+    fi
+
+    # Check and replace line 926
+    LINE_926=$(sed -n '926p' "$FILE")
+    EXPECTED_926='                    self._restart_workers(self._worker_group)'
+
+    if [[ "$LINE_926" != "$EXPECTED_926" ]]; then
+        echo "Error: Line 926 does not match '                    self._restart_workers(self._worker_group)'."
+        exit 1
+    else
+        echo "Line 926 is correct. Proceeding with replacement."
+        # Directly replace the line without using regex
+        sed -i '926s|.*|                    self._remaining_restarts -= 1; self._restart_workers(self._worker_group)|' "$FILE"
+        echo "Success: Line 926 replaced."
     fi
 fi

@@ -10,7 +10,7 @@ Options:
   --torch-ver <version>          Specify the PyTorch version (e.g., "2.7.1+cu128")
   --torchaudio-ver <version>     Specify the TorchAudio version (e.g., "2.7.1+cu128")
   --torchvision-ver <version>    Specify the TorchVision version (e.g., "0.22.1+cu128")
-  --extra_index <url>            Specify an extra index URL for pip (optional)
+  --extra-index <url>            Specify an extra index URL for pip (optional)
   --flash-attn-ver <version>     Specify the Flash Attention version (e.g., "2.8.0.post2")
   --group-gemm-ver <version>     Specify the Grouped GEMM version (e.g., "1.1.4.post6")
   --transformer-engine-commit <commit> Specify the Transformer Engine commit hash (e.g., "e9a5fa4e")
@@ -38,7 +38,7 @@ while [[ "$#" -gt 0 ]]; do
         --torch-ver) PYTORCH_VER="$2"; shift ;;
         --torchaudio-ver) TORCHAUDIO_VER="$2"; shift ;;
         --torchvision-ver) TORCHVISION_VER="$2"; shift ;;
-        --extra_index) EXTRA_INDEX="$2"; shift ;;
+        --extra-index) EXTRA_INDEX="$2"; shift ;;
         --flash-attn-ver) FLASH_ATTN_VERSION="$2"; shift ;;
         --group-gemm-ver) GROUPED_GEMM_VERSION="$2"; shift ;;
         --transformer-engine-commit) TRANSFORMER_ENGINE_COMMIT="$2"; shift ;;

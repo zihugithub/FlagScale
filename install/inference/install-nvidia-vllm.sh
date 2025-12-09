@@ -13,7 +13,7 @@ Options:
   --torch-ver <version>              Specify the PyTorch version (e.g., "2.7.1+cu128")
   --torchaudio-ver <version>         Specify the TorchAudio version (e.g., "2.7.1+cu128")
   --torchvision-ver <version>        Specify the TorchVision version (e.g., "0.22.1+cu128")
-  --extra_index <url>                Specify an extra index URL for pip (optional)
+  --extra-index <url>                Specify an extra index URL for pip (optional)
   -h|--help                          Show this help message and exit
 
 Example:
@@ -41,7 +41,7 @@ while [[ "$#" -gt 0 ]]; do
         --torch-ver) PYTORCH_VER="$2"; shift ;;
         --torchaudio-ver) TORCHAUDIO_VER="$2"; shift ;;
         --torchvision-ver) TORCHVISION_VER="$2"; shift ;;
-        --extra_index) EXTRA_INDEX="$2"; shift ;;
+        --extra-index) EXTRA_INDEX="$2"; shift ;;
         --help|-h) print_help; exit 0 ;;
         *) echo "Error: Unknown parameter passed."; print_help; exit 1 ;;
     esac
