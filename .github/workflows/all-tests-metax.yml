@@ -7,12 +7,16 @@ on:
       - '.github/workflows/*metax*.yml'
       - 'hardware/Metax_C550/**'
       - 'tests/**'
-  pull_request:
+  # pull_request:
+  pull_request_target:
+    types: [ opened, synchronize, reopened ]
     branches: ["main"]
     paths:
       - '.github/workflows/*metax*.yml'
       - 'hardware/Metax_C550/**'
       - 'tests/**'
+permissions:
+  contents: read
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}-${{ github.actor }}
