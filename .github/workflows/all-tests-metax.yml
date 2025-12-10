@@ -14,6 +14,9 @@ on:
       - '.github/workflows/*metax*.yml'
       - 'hardware/Metax_C550/**'
       - 'tests/**'
+    types: [opened, synchronize, reopened]
+  workflow_dispatch:
+
 permissions:
   contents: read
 
