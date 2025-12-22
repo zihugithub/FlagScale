@@ -286,70 +286,25 @@ python tools/patch/patch.py --backend Megatron-LM
 python tools/patch/patch.py --backend vllm
 ```
 
-## KS3 File Upload and Download Guide
+## Image Download
 
-The process involves downloading data on a JumpServer and subsequently moving it to a GPU server.
+### Image Download (KS3)
 
-### Getting Started with the [KS3Util](https://docs.ksyun.com/documents/42067?type=3) Tool
+The runtime image of this project is stored in Kingsoft Cloud Object Storage (KS3). You can download it using the following commands:
 
-1. KS3 client download link: [ks3util](https://ks3tools.ks3-cn-beijing.ksyuncs.com/tools/finder/history/history.html)
-
-2. Download the KS3 Tool
+Basic Download Command:
 ```sh
-# Download the ks3util tool for a specific version
-wget https://ks3util-version-update.ks3-cn-beijing.ksyuncs.com/2.7.1/ks3util-linux-amd64
+wget -c \
+  --limit-rate=20M \
+  --timeout=30 \
+  --tries=10 \
+  --no-check-certificate \
+  -O /data/flagscale_image.tar \
+  --progress=bar:force \
+  "https://baai-flagscale.ks3-cn-beijing.ksyuncs.com/images/flagscale:cuda12.8.1-cudnn9.7.1-python3.12-torch2.7.1-time2510131515.tar"
 
-# Add execute permissions to the file
-chmod 755 ks3util-linux-amd64
-```
-
-3. Generate and Initialize Configuration
-
-Run the following command to generate and initialize the KS3Util configuration file. This file will be used to store your access credentials and other settings.
-
-```sh
- sudo ./ks3util-linux-amd64 config
-```
-
-Example of the interactive configuration process:
-
-```
-log file is /data/logs/ks3util.log
-This command will create a configuration file to store configuration information.
-
-Please enter the name of the configuration file, which can include a path (default: /root/.ks3utilconfig; press Enter to use the default configuration file. If you set it to another file, you need to specify this file with the --config-file option when using commands):
-No configuration file was entered, the default configuration file will be used: /root/.ks3utilconfig.
-
-For the following configurations, pressing Enter will set the relevant items to their original or default values. For details on what each configuration item means, please use the "help config" command.
-Please enter language (CH/EN, default: EN, this setting will take effect after this config command completes successfully):
-Please enter accessKeyID: AK
-Please enter accessKeySecret: SK
-Please enter endpoint [ks3-cn-beijing.ksyuncs.com]: ks3-cn-beijing.ksyuncs.com
-Please enter loglevel: info
-```
-
-4. Upload Files or Directories
-
-Use the cp command to upload local files or directories to a KS3 bucket.
-
-```sh
-# Upload a single file
-./ks3util-linux-amd64 cp /data/file.txt ks3://baai-flagscale/file.txt
-
-# Recursively upload an entire directory (-r flag)
-./ks3util-linux-amd64 cp /data/target_directory ks3://baai-flagscale/ -r
-```
-
-5. Download Files or Directories
-
-Use the cp command to download files or directories from a KS3 bucket to a local path.
-
-```sh
-# Download a single file
-./ks3util-linux-amd64 cp ks3://baai-flagscale/file.txt /data/file.txt
-
-# Recursively download an entire directory (-r flag)
-./ks3util-linux-amd64 cp ks3://baai-flagscale/target_directory /data/ -r
+# Note: Please see the following for the complete image list: 
+#    https://baai-flagscale.ks3-cn-beijing.ksyuncs.com/images/images.txt
 ```
 
 ## 📄 License
