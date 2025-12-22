@@ -341,18 +341,8 @@ docker run  -itd \
   --hostname flagscale-host \
   --user root \
   --ulimit nofile=65535:65535 \
-  -v "/HOST_PATH/flagscale/data":"/home/gitlab-runner/data" \
-  -v "/HOST_PATH/flagscale/tokenizers":"/home/gitlab-runner/tokenizers" \
+  -v "/host_path/flagscale/data":"/container_path/flagscale/data" \
   flagscale:cuda12.8.1-cudnn9.7.1-python3.12-torch2.7.0-time2507111538
-
-
-# Directory Mounting Description
-
-# /HOST_PATH/flagscale/data:
-#   Stores the test datasets required for model training
-
-# /HOST_PATH/flagscale/tokenizers:
-#   Stores the relevant files of Tokenizer (word tokenizer) used during training (e.g., vocabulary, configurations, pre-trained tokenization models, etc.)
 ```
 
 **Parameter Explanation:**
@@ -361,7 +351,7 @@ docker run  -itd \
 |-------------|--------|
 | --name      | A custom name for the container. It's recommended to use a descriptive name for easier management. |
 | --gpus all  | Allows the container to access all GPUs on the host machine. |
-| --shm-size  | Sets the size of the shared memory used within the container. |
+| --shm-size  | Used to set the size of shared memory allocated within the container.<br>   For high-memory-throughput tasks such as machine learning, reasonably increasing this configuration can effectively improve task execution efficiency and reduce the occurrence of out-of-memory (OOM) errors |
 | --hostname  | Sets the hostname inside the container, which helps with log identification. |
 | --user root | Runs the container with root privileges to avoid file permission issues. |
 | --ulimit    | Increases the limit of open file descriptors for high-concurrency scenarios. |
