@@ -307,6 +307,102 @@ wget -c \
 #    https://baai-flagscale.ks3-cn-beijing.ksyuncs.com/images/images.txt
 ```
 
+### Docker Image User Guide
+
+This section provides a detailed guide on how to import the FlagScale image and walk through the complete process of creating, starting, and accessingthe container.
+
+1. Prerequisites
+
+- **Docker** is installed (Docker version ≥ 24.0.7 is recommended).
+- **NVIDIA Container Toolkit** is installed (required for GPU functionality).
+- The server has **GPU hardware** available. (If GPUs are not needed, you can remove the `--gpus all` parameter).
+
+2. Import the Image
+
+Import the local image tarball into your Docker environment:
+
+```sh
+# Import the FlagScale image
+docker load -i flagscale:cuda12.8.1-cudnn9.7.1-python3.12-torch2.7.1-time2510131515.tar
+
+# Verify that the image was imported successfully
+docker images | grep flagscale
+```
+
+3. Create and Start the Container
+
+Use the following command to create and run the container in detached mode. Please replace the placeholder values with your actual configuration:
+
+```sh
+docker run  -itd \
+  --name flagscale-container \
+  --gpus all \
+  --shm-size=500g \
+  --hostname flagscale-host \
+  --user root \
+  --ulimit nofile=65535:65535 \
+  -v "/home/flagscale_cicd/docker/docker_build/docker_data":"/home/gitlab-runner/data" \
+  -v "/home/flagscale_cicd/docker/docker_build/docker_tokenizers":"/home/gitlab-runner/tokenizers" \
+  flagscale:cuda12.8.1-cudnn9.7.1-python3.12-torch2.7.0-time2507111538
+
+
+# Directory Mounting Description
+
+# /home/flagscale_cicd/docker/docker_build/docker_data:
+#   Stores the test datasets required for model training
+
+# /home/flagscale_cicd/docker/docker_build/docker_tokenizers:
+#   Stores the relevant files of Tokenizer (word tokenizer) used during training (e.g., vocabulary, configurations, pre-trained tokenization models, etc.)
+```
+
+**Parameter Explanation:**
+
+| Parameter   | Description    |
+|-------------|--------|
+| --name      | A custom name for the container. It's recommended to use a descriptive name for easier management. |
+| --gpus all  | Allows the container to access all GPUs on the host machine. |
+| --shm-size  | Sets the size of the shared memory used within the container. |
+| --hostname  | Sets the hostname inside the container, which helps with log identification. |
+| --user root | Runs the container with root privileges to avoid file permission issues. |
+| --ulimit    | Increases the limit of open file descriptors for high-concurrency scenarios. |
+| -v          | Mounts a directory from the host to the container (Format: host_path:container_path). |
+
+4. Access the Container
+
+Once the container is running, you can get an interactive shell by using the following command:
+
+```sh
+# Access the container using its name
+docker exec -it flagscale-container bash
+
+# Or, access it using the container ID (you can find the ID with `docker ps`)
+docker exec -it [CONTAINER-ID] bash
+```
+
+5. Useful Management Commands
+
+Here are some common commands for managing your container:
+
+```sh
+# List running containers
+docker ps
+
+# List all containers (including stopped ones)
+docker ps -a
+
+# Start a stopped container
+docker start flagscale-container
+
+# Stop a running container
+docker stop flagscale-container
+
+# Remove a container
+docker rm -f flagscale-container
+
+# View real-time logs of a container
+docker logs -f flagscale-container
+```
+
 ## 📄 License
 
 This project is licensed under the [Apache License (Version 2.0)](https://github.com/FlagOpen/FlagScale/blob/main/LICENSE). This project also contains other third-party components under other open-source licenses. See the [LICENSE](https://github.com/FlagOpen/FlagScale/blob/main/LICENSE) file for more information.
