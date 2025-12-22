@@ -341,17 +341,17 @@ docker run  -itd \
   --hostname flagscale-host \
   --user root \
   --ulimit nofile=65535:65535 \
-  -v "/home/flagscale_cicd/docker/docker_build/docker_data":"/home/gitlab-runner/data" \
-  -v "/home/flagscale_cicd/docker/docker_build/docker_tokenizers":"/home/gitlab-runner/tokenizers" \
+  -v "/HOST_PATH/flagscale/data":"/home/gitlab-runner/data" \
+  -v "/HOST_PATH/flagscale/tokenizers":"/home/gitlab-runner/tokenizers" \
   flagscale:cuda12.8.1-cudnn9.7.1-python3.12-torch2.7.0-time2507111538
 
 
 # Directory Mounting Description
 
-# /home/flagscale_cicd/docker/docker_build/docker_data:
+# /HOST_PATH/flagscale/data:
 #   Stores the test datasets required for model training
 
-# /home/flagscale_cicd/docker/docker_build/docker_tokenizers:
+# /HOST_PATH/flagscale/tokenizers:
 #   Stores the relevant files of Tokenizer (word tokenizer) used during training (e.g., vocabulary, configurations, pre-trained tokenization models, etc.)
 ```
 
