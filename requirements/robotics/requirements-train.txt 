@@ -1,0 +1,7 @@
+webdataset
+epath
+wandb
+qwen_vl_utils # robotics
+diffusers # robotics
+transformers==4.53.0
+multi-storage-client # for megatron-energon

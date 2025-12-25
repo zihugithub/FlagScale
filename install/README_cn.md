@@ -75,11 +75,10 @@ bash ./install/inference/install-metax-vllm.sh \
 
 注：更多touch版本与TorchVision版本对应关系见：https://github.com/pytorch/vision#installation
 
-| torch | vllm | flash-attn | group-gemm | transformer-engine | verl |
-|-------|------|------------|------------|--------------------|------|
-| 2.6.0 | 0.8.6.dev0+gba41cc90e.d20250524 | 2.7.3 | 1.1.2 | 5bee81e | |
-| 2.7.0 | 0.9.2.dev0+gb6553be1b.d20250626 | 2.8.0.post2 | 1.1.2 | 5bee81e | |
-| 2.7.1 | 0.10.1.dev0+g6d8d0a24c.d20250925 | 2.8.0.post2 | 1.1.2 | e9a5fa4e | |
-| 2.8.0 | 0.11.0 | 
-| 2.9.0 | xxxx | xxxxxxxxxx | 1.1.4.post6 | 29537c96          |       |
+| torch | vllm | flash-attn | group-gemm | transformer-engine |
+|-------|------|------------|------------|--------------------|
+| 2.6.0 | 0.8.6.dev0+gba41cc90e.d20250524 | 2.7.3 | 1.1.2 | 5bee81e |
+| 2.7.0 | 0.9.2.dev0 | 2.8.0.post2 | 1.1.2 | 5bee81e |
+| 2.7.1 | 0.10.1.dev0 | 2.8.0.post2 | 1.1.2 | e9a5fa4e        |
+| 2.8.0 | 0.11.0.dev | 2.8.3| 1.1.4.post6 | e9a5fa4e          |
 
