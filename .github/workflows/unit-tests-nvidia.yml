@@ -43,8 +43,61 @@ jobs:
           submodules: false
           set-safe-directory: true
 
+      - name: Install FlagScale training dependencies
+        timeout-minutes: 30
+        if: ${{ inputs.backend == 'train_flagscale' }}
+        working-directory: /workspace
+        run: |
+          echo "Current backend: ${{ inputs.backend }}"
+
+          source /root/miniconda3/bin/activate flagscale-train
+          source .github/workflows/scripts/retry_functions.sh
+
+          # For megatron unit tests. See details in https://github.com/NVIDIA/Megatron-LM/blob/8479eb35fbca9631acb846c3ad5d868e02214227/tests/unit_tests/conftest.py#L78
+          mkdir -p /opt/data
+          cp -r /home/gitlab-runner/data/Megatron-LM/* /opt/data/
+          cp -r /home/gitlab-runner/tokenizers/Megatron-LM/* /opt/data/
+
+          # install megatron.core
+          COMMANDS=(
+            "rm -rf /workspace/*"
+            "git clone https://github.com/flagos-ai/Megatron-LM-FL.git"
+            "cd /workspace/Megatron-LM-FL"
+            "pip install --no-build-isolation . -vvv"
+          )
+          retry_commands 3 COMMANDS
+
+      - name: init backend dependencies
+        timeout-minutes: 90
+        if: ${{ inputs.backend == 'vllm' || inputs.backend == 'inference_flagscale' }}
+        working-directory: /workspace
+        run: |
+          echo "Current backend: ${{ inputs.backend }}"
+
+          source /root/miniconda3/bin/activate flagscale-inference
+          source .github/workflows/scripts/retry_functions.sh
+
+          # install FlagGems
+          INSTALL_FLAGGEMS=(
+            "pip install scikit-build scikit-build-core"
+            "pip install --no-build-isolation git+https://github.com/FlagOpen/FlagGems.git@release_v1.0.0"
+          )
+          retry_commands 3 INSTALL_FLAGGEMS
+
+          # install vllm
+          INSTALL_VLLM=(
+            "rm -rf /workspace/*"
+            "git clone https://github.com/flagos-ai/vllm-FL.git"
+            "cd /workspace/vllm-FL"
+            "sccache --start-server"
+            "sccache --show-stats"
+            "pip install --no-build-isolation . -vvv"
+            "sccache --show-stats"
+          )
+          retry_commands 3 INSTALL_VLLM
+
       - name: Run Unit Test
-        timeout-minutes: 90  # Automatically terminate the current step after 90 minutes
+        timeout-minutes: 30
         run: |
           echo "USER: $USER"
           echo "UID: $(id -u)"
@@ -61,29 +114,4 @@ jobs:
           cd $TMP_DIR
           trap 'echo "Cleaning up temporary directory..."; rm -rf "$TMP_DIR"' EXIT
 
-          if [ "${{ inputs.backend }}" = "train_flagscale" ]; then
-            echo ""
-            # For megatron unit tests. See details in https://github.com/NVIDIA/Megatron-LM/blob/8479eb35fbca9631acb846c3ad5d868e02214227/tests/unit_tests/conftest.py#L78
-            mkdir -p /opt/data
-            cp -r /home/gitlab-runner/data/Megatron-LM/* /opt/data/
-            cp -r /home/gitlab-runner/tokenizers/Megatron-LM/* /opt/data/
-            # install megatron.core
-            source /root/miniconda3/bin/activate flagscale-train
-            git clone https://github.com/flagos-ai/Megatron-LM-FL.git
-            cd Megatron-LM-FL
-            pip install --no-build-isolation .
-            cd ../
-            # PYTHONPATH=./:$PYTHONPATH pip install . --config-settings=backend="Megatron-LM" --verbose --no-build-isolation
-          elif [ "${{ inputs.backend }}" = "vllm" ] || [ "${{ inputs.backend }}" = "inference_flagscale" ]; then
-            source /root/miniconda3/bin/activate flagscale-inference
-            pip install scikit-build scikit-build-core
-            pip install --no-build-isolation git+https://github.com/FlagOpen/FlagGems.git@release_v1.0.0
-            PYTHONPATH=./:$PYTHONPATH pip install . --config-settings=backend="vllm" --verbose --no-build-isolation
-            conda deactivate
-          else
-            echo "Unknown backend type: ${{ inputs.backend }}"
-            exit 1
-          fi
-
           tests/scripts/unit_tests/test_subset.sh --backend ${{ inputs.backend }} --subset ${{ inputs.subset }} --id ${{ github.sha }}
-        shell: bash
