@@ -53,19 +53,20 @@ jobs:
         if: ${{ inputs.type == 'train' || inputs.type == 'hetero_train' }}
         run: |
           echo "Current type: ${{ inputs.type }}"
+          WORK_SPACE=$PWD
 
           source /root/miniconda3/bin/activate flagscale-train
           source .github/workflows/scripts/retry_functions.sh
 
           COMMANDS=(
-            "cd /workspace && rm -rf /workspace/Megatron-LM-FL"
+            "rm -rf ${WORK_SPACE}/Megatron-LM-FL"
             "git clone https://github.com/flagos-ai/Megatron-LM-FL.git"
             "pip install httpx multi-storage-client boto3 google-cloud-storage fastapi uvicorn griffe"
-            "cd /workspace/Megatron-LM-FL"
+            "cd ${WORK_SPACE}/Megatron-LM-FL"
             "pip install --no-build-isolation . -vvv"
           )
 
-          retry_commands 3 COMMANDS
+          retry_commands 3 "${COMMANDS[@]}"
 
       - name:  Install FlagScale inference dependencies
         timeout-minutes: 90
@@ -74,6 +75,7 @@ jobs:
           SCCACHE_DIR: /root/.cache/sccache
         run: |
           echo "Current type: ${{ inputs.type }}"
+          WORK_SPACE=$PWD
 
           source /root/miniconda3/bin/activate flagscale-inference
           source .github/workflows/scripts/retry_functions.sh
@@ -83,7 +85,7 @@ jobs:
             "pip install scikit-build scikit-build-core"
             "pip install git+https://github.com/FlagOpen/FlagGems.git@v3.0"
           )
-          retry_commands 3 INSTALL_FLAGGEMS
+          retry_commands 3 "${INSTALL_FLAGGEMS[@]}"
 
           # modify for support 0.5b_multiple_instance ci test because of ray version issue
           Additional_dependencies=(
@@ -91,19 +93,19 @@ jobs:
             "pip install gymnasium"
             "pip install dm-tree"
           )
-          retry_commands 3 Additional_dependencies
+          retry_commands 3 "${Additional_dependencies[@]}"
 
           # install vllm
           INSTALL_VLLM=(
-            "cd /workspace && rm -rf /workspace/vllm-FL"
+            "rm -rf ${WORK_SPACE}/vllm-FL"
             "git clone https://github.com/flagos-ai/vllm-FL.git"
-            "cd /workspace/vllm-FL"
+            "cd ${WORK_SPACE}/vllm-FL"
             "sccache --start-server"
             "sccache --show-stats"
             "pip install --no-build-isolation . -vvv"
             "sccache --show-stats"
           )
-          retry_commands 3 INSTALL_VLLM
+          retry_commands 3 "${INSTALL_VLLM[@]}"
 
       - name: Run Functional Test
         id: functional_test

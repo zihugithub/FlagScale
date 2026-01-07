@@ -52,6 +52,7 @@ jobs:
         if: ${{ inputs.backend == 'train_flagscale' }}
         run: |
           echo "Current backend: ${{ inputs.backend }}"
+          WORK_SPACE=$PWD
 
           source /root/miniconda3/bin/activate flagscale-train
           source .github/workflows/scripts/retry_functions.sh
@@ -63,18 +64,19 @@ jobs:
 
           # install megatron.core
           COMMANDS=(
-            "cd /workspace && rm -rf /workspace/Megatron-LM-FL"
+            "rm -rf ${WORK_SPACE}/Megatron-LM-FL"
             "git clone https://github.com/flagos-ai/Megatron-LM-FL.git"
-            "cd /workspace/Megatron-LM-FL"
+            "cd ${WORK_SPACE}/Megatron-LM-FL"
             "pip install --no-build-isolation . -vvv"
           )
-          retry_commands 3 COMMANDS
+          retry_commands 3 "${COMMANDS[@]}"
 
       - name: init backend dependencies
         timeout-minutes: 90
         if: ${{ inputs.backend == 'vllm' || inputs.backend == 'inference_flagscale' }}
         run: |
           echo "Current backend: ${{ inputs.backend }}"
+          WORK_SPACE=$PWD
 
           source /root/miniconda3/bin/activate flagscale-inference
           source .github/workflows/scripts/retry_functions.sh
@@ -84,19 +86,19 @@ jobs:
             "pip install scikit-build scikit-build-core"
             "pip install --no-build-isolation git+https://github.com/FlagOpen/FlagGems.git@release_v1.0.0"
           )
-          retry_commands 3 INSTALL_FLAGGEMS
+          retry_commands 3 "${INSTALL_FLAGGEMS[@]}"
 
           # install vllm
           INSTALL_VLLM=(
-            "cd /workspace && rm -rf /workspace/vllm-FL"
+            "rm -rf ${WORK_SPACE}/vllm-FL"
             "git clone https://github.com/flagos-ai/vllm-FL.git"
-            "cd /workspace/vllm-FL"
+            "cd ${WORK_SPACE}/vllm-FL"
             "sccache --start-server"
             "sccache --show-stats"
             "pip install --no-build-isolation . -vvv"
             "sccache --show-stats"
           )
-          retry_commands 3 INSTALL_VLLM
+          retry_commands 3 "${INSTALL_VLLM[@]}"
 
       - name: Run Unit Test
         timeout-minutes: 30
