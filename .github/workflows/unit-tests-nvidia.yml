@@ -49,7 +49,6 @@ jobs:
       - name: Install FlagScale training dependencies
         timeout-minutes: 30
         if: ${{ inputs.backend == 'train_flagscale' }}
-        working-directory: /workspace
         run: |
           echo "Current backend: ${{ inputs.backend }}"
 
@@ -63,7 +62,7 @@ jobs:
 
           # install megatron.core
           COMMANDS=(
-            "rm -rf /workspace/*"
+            "cd /workspace && rm -rf ./*"
             "git clone https://github.com/flagos-ai/Megatron-LM-FL.git"
             "cd /workspace/Megatron-LM-FL"
             "pip install --no-build-isolation . -vvv"
@@ -73,7 +72,6 @@ jobs:
       - name: init backend dependencies
         timeout-minutes: 90
         if: ${{ inputs.backend == 'vllm' || inputs.backend == 'inference_flagscale' }}
-        working-directory: /workspace
         run: |
           echo "Current backend: ${{ inputs.backend }}"
 
@@ -89,7 +87,7 @@ jobs:
 
           # install vllm
           INSTALL_VLLM=(
-            "rm -rf /workspace/*"
+            "cd /workspace && rm -rf ./*"
             "git clone https://github.com/flagos-ai/vllm-FL.git"
             "cd /workspace/vllm-FL"
             "sccache --start-server"
