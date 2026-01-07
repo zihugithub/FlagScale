@@ -63,7 +63,7 @@ jobs:
 
           # install megatron.core
           COMMANDS=(
-            "cd /workspace && rm -rf ./*"
+            "cd /workspace && rm -rf /workspace/Megatron-LM-FL"
             "git clone https://github.com/flagos-ai/Megatron-LM-FL.git"
             "cd /workspace/Megatron-LM-FL"
             "pip install --no-build-isolation . -vvv"
@@ -88,7 +88,7 @@ jobs:
 
           # install vllm
           INSTALL_VLLM=(
-            "cd /workspace && rm -rf ./*"
+            "cd /workspace && rm -rf /workspace/vllm-FL"
             "git clone https://github.com/flagos-ai/vllm-FL.git"
             "cd /workspace/vllm-FL"
             "sccache --start-server"
