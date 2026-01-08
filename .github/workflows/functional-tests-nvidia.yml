@@ -53,16 +53,16 @@ jobs:
         if: ${{ inputs.type == 'train' || inputs.type == 'hetero_train' }}
         run: |
           echo "Current type: ${{ inputs.type }}"
-          WORK_SPACE=$PWD
+          echo "📌 GitHub Actions default workspace: $GITHUB_WORKSPACE"
 
           source /root/miniconda3/bin/activate flagscale-train
           source .github/workflows/scripts/retry_functions.sh
 
           COMMANDS=(
-            "rm -rf ${WORK_SPACE}/Megatron-LM-FL"
+            "rm -rf ${GITHUB_WORKSPACE}/Megatron-LM-FL"
             "git clone https://github.com/flagos-ai/Megatron-LM-FL.git"
             "pip install httpx multi-storage-client boto3 google-cloud-storage fastapi uvicorn griffe"
-            "cd ${WORK_SPACE}/Megatron-LM-FL"
+            "cd ${GITHUB_WORKSPACE}/Megatron-LM-FL"
             "pip install --no-build-isolation . -vvv"
           )
 
@@ -75,7 +75,7 @@ jobs:
           SCCACHE_DIR: /root/.cache/sccache
         run: |
           echo "Current type: ${{ inputs.type }}"
-          WORK_SPACE=$PWD
+          echo "📌 GitHub Actions default workspace: $GITHUB_WORKSPACE"
 
           source /root/miniconda3/bin/activate flagscale-inference
           source .github/workflows/scripts/retry_functions.sh
@@ -97,9 +97,9 @@ jobs:
 
           # install vllm
           INSTALL_VLLM=(
-            "rm -rf ${WORK_SPACE}/vllm-FL"
+            "rm -rf ${GITHUB_WORKSPACE}/vllm-FL"
             "git clone https://github.com/flagos-ai/vllm-FL.git"
-            "cd ${WORK_SPACE}/vllm-FL"
+            "cd ${GITHUB_WORKSPACE}/vllm-FL"
             "sccache --start-server"
             "sccache --show-stats"
             "pip install --no-build-isolation . -vvv"

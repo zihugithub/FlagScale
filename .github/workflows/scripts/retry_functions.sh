@@ -24,9 +24,12 @@ retry() {
 # Parameter 2 provides the command array's name as a string.
 retry_commands() {
     local retries=$1
-    local cmd_array_name=$2
+    shift
     # How to convert a string to an array in Bash to handle inter-function array passing.
-    local -a cmds=("${!cmd_array_name}")
+    local -a cmds=("$@")
+
+    echo "🔍 Retry config: max retries = $retries"
+    echo "📝 Total commands to execute: ${#cmds[@]}"
 
     # For each command in the array, run it and retry upon failure. 
     # Proceed to return only when all commands have executed successfully.

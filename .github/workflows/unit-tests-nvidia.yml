@@ -52,7 +52,7 @@ jobs:
         if: ${{ inputs.backend == 'train_flagscale' }}
         run: |
           echo "Current backend: ${{ inputs.backend }}"
-          WORK_SPACE=$PWD
+          echo "📌 GitHub Actions default workspace: $GITHUB_WORKSPACE"
 
           source /root/miniconda3/bin/activate flagscale-train
           source .github/workflows/scripts/retry_functions.sh
@@ -64,10 +64,9 @@ jobs:
 
           # install megatron.core
           COMMANDS=(
-            "rm -rf ${WORK_SPACE}/Megatron-LM-FL"
+            "rm -rf ${GITHUB_WORKSPACE}/Megatron-LM-FL"
             "git clone https://github.com/flagos-ai/Megatron-LM-FL.git"
-            "cd ${WORK_SPACE}/Megatron-LM-FL"
-            "pip install --no-build-isolation . -vvv"
+            "cd ${GITHUB_WORKSPACE}/Megatron-LM-FL && pip install --no-build-isolation . -vvv"
           )
           retry_commands 3 "${COMMANDS[@]}"
 
@@ -76,7 +75,7 @@ jobs:
         if: ${{ inputs.backend == 'vllm' || inputs.backend == 'inference_flagscale' }}
         run: |
           echo "Current backend: ${{ inputs.backend }}"
-          WORK_SPACE=$PWD
+          echo "📌 GitHub Actions default workspace: $GITHUB_WORKSPACE"
 
           source /root/miniconda3/bin/activate flagscale-inference
           source .github/workflows/scripts/retry_functions.sh
@@ -90,9 +89,9 @@ jobs:
 
           # install vllm
           INSTALL_VLLM=(
-            "rm -rf ${WORK_SPACE}/vllm-FL"
+            "rm -rf ${GITHUB_WORKSPACE}/vllm-FL"
             "git clone https://github.com/flagos-ai/vllm-FL.git"
-            "cd ${WORK_SPACE}/vllm-FL"
+            "cd ${GITHUB_WORKSPACE}/vllm-FL"
             "sccache --start-server"
             "sccache --show-stats"
             "pip install --no-build-isolation . -vvv"
