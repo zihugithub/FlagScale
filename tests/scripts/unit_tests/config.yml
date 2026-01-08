@@ -31,4 +31,4 @@ inference_flagscale:
       depth: all
     transformations:
       type: batch
-      depth: allworkflow/FlagScale/tests
+      depth: all
