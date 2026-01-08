@@ -6,8 +6,9 @@
 retry() {
     local retries=$1
     shift
+    local cmd="$*"
     local count=0
-    until "$@"; do
+    until eval "$cmd"; do
         count=$((count + 1))
         if [ $count -ge $retries ]; then
             echo "❌ Command failed after $retries retries: $*"
@@ -37,7 +38,7 @@ retry_commands() {
         echo "🔧 Executing command: $cmd"
         # Run commands with special characters or variables via eval, 
         # and trigger the retry function as needed.
-        retry $retries bash -c "$cmd"
+        retry $retries "$cmd"
         local cmd_exit_code=$?
         if [ $cmd_exit_code -ne 0 ]; then
             echo "❌ Batch commands failed at: $cmd"
