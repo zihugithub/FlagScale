@@ -1,0 +1,140 @@
+ARG CUDA_VERSION=12.8.1
+ARG PYTHON_VERSION
+ARG MINICONDA_VERSION
+ARG CUDNN_VERSION
+ARG PYTORCH_VER
+ARG TORCHAUDIO_VER
+ARG TORCHVISION_VER
+ARG EXTRA_INDEX
+
+FROM nvcr.io/nvidia/cuda:${CUDA_VERSION}-devel-ubuntu22.04 AS base
+
+ARG PYTHON_VERSION=3.12
+ARG MINICONDA_VERSION=25.11.1-1
+ARG CUDNN_VERSION=9.7.1
+
+ENV DEBIAN_FRONTEND noninteractive
+ENV TZ=Asia/Shanghai
+
+# Set non-interactive mode to prevent interactive prompts during installation
+# Prevents: 
+#   - Package configuration prompts (e.g., timezone selection)
+#   - License agreement confirmations
+#   - Customization options for base images
+ENV DEBIAN_FRONTEND noninteractive
+ENV TZ=Asia/Shanghai
+
+WORKDIR /workspace
+
+# Install Basic Utilities
+RUN set -eux && apt-get update && \
+    echo "N" | apt-get install -y --no-install-recommends pkg-config && \
+    apt-get install -y --no-install-recommends git \
+        ca-certificates curl wget \
+        build-essential gcc g++ cmake ninja-build pkg-config ccache \
+        libibverbs1 libibverbs-dev libnuma-dev \
+        sudo rsync && \
+    apt-get clean && \
+    rm -rf /var/lib/apt/lists/*
+
+# Install Python
+RUN set -eux && apt-get update && \
+    # 安装添加PPA所需的依赖
+    apt-get install -y --no-install-recommends software-properties-common && \
+    # 添加deadsnakes PPA并更新源
+    add-apt-repository ppa:deadsnakes/ppa && \
+    apt-get update -y && \
+    # 安装Python核心依赖
+    apt-get install -y --no-install-recommends \
+        python${PYTHON_VERSION} \
+        python${PYTHON_VERSION}-dev \
+        python${PYTHON_VERSION}-venv \
+        python3-distutils \
+        python3-pip && \
+    # 配置python3/python软链接
+    update-alternatives --install /usr/bin/python3 python3 /usr/bin/python${PYTHON_VERSION} 1 && \
+    update-alternatives --set python3 /usr/bin/python${PYTHON_VERSION} && \
+    ln -sf /usr/bin/python${PYTHON_VERSION}-config /usr/bin/python3-config && \
+    ln -sf /usr/bin/python3 /usr/bin/python && \
+    python -m ensurepip --upgrade && \
+    python -m pip install --no-cache-dir --upgrade pip setuptools && \
+    # 清理blinker冲突文件及apt缓存
+    rm -rf /usr/lib/python3/dist-packages/blinker* && \
+    apt-get purge -y --auto-remove software-properties-common && \
+    apt-get clean && \
+    rm -rf /var/lib/apt/lists/*
+
+# Install Miniconda
+RUN set -eux && \
+    PY_VER_SHORT=$(echo "${PYTHON_VERSION}" | tr -d '.') && \
+    MINICONDA_INSTALLER="Miniconda3-py${PY_VER_SHORT}_${MINICONDA_VERSION}-Linux-x86_64.sh" && \
+    MINICONDA_URL="https://repo.anaconda.com/miniconda/${MINICONDA_INSTALLER}" && \
+    MINICONDA_DIR="/opt/miniconda3" && \
+    mkdir -p ${MINICONDA_DIR} && \
+    wget --no-verbose --timeout=30 --tries=3 ${MINICONDA_URL} -O  ${MINICONDA_DIR}/miniconda.sh && \
+    bash ${MINICONDA_DIR}/miniconda.sh -b -u -p ${MINICONDA_DIR} && \
+    rm -rf ${MINICONDA_DIR}/miniconda.sh && \
+    ${MINICONDA_DIR}/bin/conda init bash && \
+    ${MINICONDA_DIR}/bin/conda config --set auto_activate_base false && \
+    ${MINICONDA_DIR}/bin/conda config --set default_python ${PYTHON_VERSION} && \
+    ${MINICONDA_DIR}/bin/conda clean -afy
+
+# Install cuDNN (NVIDIA CUDA Deep Neural Network library)
+RUN set -eux && \
+    CUDNN_MAJOR=$(echo "${CUDNN_VERSION}" | cut -d. -f1) && \
+    CUDNN_MINOR=$(echo "${CUDNN_VERSION}" | cut -d. -f2) && \
+    CUDA_MAJOR=$(echo "${CUDA_VERSION}" | cut -d. -f1) && \
+    CUDA_MINOR=$(echo "${CUDA_VERSION}" | cut -d. -f2) && \
+    CUDA_FULL="${CUDA_MAJOR}.${CUDA_MINOR}" && \
+    CUDNN_ARCHIVE="cudnn-linux-x86_64-${CUDNN_VERSION}.26_cuda${CUDA_MAJOR}-archive.tar.xz" && \
+    CUDNN_URL="https://developer.download.nvidia.com/compute/cudnn/redist/cudnn/linux-x86_64/${CUDNN_ARCHIVE}" && \
+    CUDA_PREFIX="/usr/local/cuda-${CUDA_FULL}" && \
+    wget --no-verbose --timeout=60 --tries=3 ${CUDNN_URL} && \
+    tar -xJf ${CUDNN_ARCHIVE} --strip-components=1 -C /tmp/cudnn_tmp && \
+    mkdir -p ${CUDA_PREFIX}/{include,lib64} && \
+    cp /tmp/cudnn_tmp/include/cudnn*.h ${CUDA_PREFIX}/include/ && \
+    cp -P /tmp/cudnn_tmp/lib/libcudnn* ${CUDA_PREFIX}/lib64/ && \
+    chmod a+r ${CUDA_PREFIX}/include/cudnn*.h ${CUDA_PREFIX}/lib64/libcudnn* && \
+    echo "PATH=${CUDA_PREFIX}/bin:\$PATH" >> /etc/environment && \
+    echo "LD_LIBRARY_PATH=${CUDA_PREFIX}/lib64:\$LD_LIBRARY_PATH" >> /etc/environment && \
+    source /etc/environment && \
+    echo "cuDNN version verification:" && \
+    grep -E "CUDNN_(MAJOR|MINOR|PATCH)" ${CUDA_PREFIX}/include/cudnn_version.h && \
+    rm -rf ${CUDNN_ARCHIVE} /tmp/cudnn_tmp && \
+    ldconfig
+
+# Set default shell
+SHELL ["/bin/bash", "-c"]
+
+# FlagScale REPO
+FROM base AS flagscale-repo
+
+WORKDIR /workspace/FlagScale
+
+COPY ./ ./
+
+# FlagScale Train: Base Environment Installation Guide
+FROM flagscale-repo AS build_train
+
+ARG PYTHON_VERSION=3.12
+RUN ~/miniconda3/bin/conda create --name "flagscale-train" python==${PYTHON_VERSION} -y 
+
+# Install torch
+# Define variables for clarity and maintainability
+ARG PYTORCH_VER="2.7.1+cu128"
+ARG TORCHAUDIO_VER="2.7.1+cu128"
+ARG TORCHVISION_VER="0.22.1+cu128"
+ARG EXTRA_INDEX="https://download.pytorch.org/whl/cu128"
+
+RUN source /opt/miniconda3/bin/activate flagscale-train && \
+    pip install \
+        torch==$PYTORCH_VER \
+        torchaudio==$TORCHAUDIO_VER \
+        torchvision==$TORCHVISION_VER \
+        --extra-index-url $EXTRA_INDEX
+
+# Train Environment: Dependency Installation
+RUN source /root/miniconda3/bin/activate flagscale-train && \
+    pip install -r ./requirements/requirements-base.txt && \
+    pip install -r ./requirements/robotics/train/requirements-megatron-nvidia.txt
+
