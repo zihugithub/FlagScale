@@ -1,6 +1,6 @@
-name: Common Functional Tests - RL
+name: Common Functional Tests - Serve
 
-# RL task workflow - currently minimal tests
+# Serve task workflow - currently minimal tests
 # Install scripts and test infrastructure are ready
 
 on:
@@ -42,7 +42,7 @@ on:
         default: "/root/miniconda3"
 
 jobs:
-  functional_test_rl:
+  functional_test_serve:
     defaults:
       run:
         shell: bash
@@ -109,7 +109,7 @@ jobs:
         run: |
           git config --global --add safe.directory $PROJECT_ROOT
 
-      - name: Install dependencies for rl
+      - name: Install dependencies for serve
         run: |
           set -euo pipefail
           cd $PROJECT_ROOT
@@ -118,7 +118,7 @@ jobs:
           CONDA_PATH='${{ inputs.conda_path }}'
 
           # Build install command with optional conda parameters
-          INSTALL_CMD="./tools/install/install.sh --platform ${{ inputs.platform }} --task rl --retry-count 3"
+          INSTALL_CMD="./tools/install/install.sh --platform ${{ inputs.platform }} --task serve --retry-count 3"
           if [ -n "$CONDA_ENV" ]; then
             INSTALL_CMD="$INSTALL_CMD --conda-env $CONDA_ENV"
             if [ -n "$CONDA_PATH" ]; then
@@ -128,7 +128,7 @@ jobs:
 
           # Run install script (handles conda activation internally if needed)
           eval $INSTALL_CMD
-        timeout-minutes: 30
+        timeout-minutes: 90
 
       - name: Run functional tests
         id: functional_test
@@ -144,7 +144,7 @@ jobs:
           CONDA_ENV='${{ inputs.conda_env }}'
           CONDA_PATH='${{ inputs.conda_path }}'
 
-          echo "Running functional tests for rl"
+          echo "Running functional tests for serve"
           echo "Platform: $PLATFORM"
           echo "Device: $DEVICE"
           echo "Task: $TASK"
@@ -190,3 +190,12 @@ jobs:
           echo "exit_code=$exit_code" >> $GITHUB_OUTPUT
           exit $exit_code
         timeout-minutes: 15
+
+      - name: Upload Functional Test Logs
+        if: always() && steps.functional_test.outcome == 'failure'
+        uses: actions/upload-artifact@v4
+        with:
+          name: functional_tests-logs-${{ github.run_id }}-${{ matrix.test_config.task }}-${{ matrix.test_config.model }}
+          path: tests/functional_tests/${{ matrix.test_config.task }}/${{ matrix.test_config.model }}/results_test
+          retention-days: 7
+          if-no-files-found: warn

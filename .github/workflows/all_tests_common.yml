@@ -23,6 +23,7 @@ jobs:
       train_test_matrix: ${{ steps.config.outputs.train_test_matrix }}
       hetero_train_test_matrix: ${{ steps.config.outputs.hetero_train_test_matrix }}
       inference_test_matrix: ${{ steps.config.outputs.inference_test_matrix }}
+      serve_test_matrix: ${{ steps.config.outputs.serve_test_matrix }}
       rl_test_matrix: ${{ steps.config.outputs.rl_test_matrix }}
     steps:
       - name: Checkout code
@@ -160,6 +161,23 @@ jobs:
       conda_env: flagscale-inference  # Optional: can be empty for non-conda environments
       conda_path: "/root/miniconda3"  # Optional: specify custom conda path, empty for auto-detection
 
+  functional_tests_serve:
+    needs:
+      - checkout_and_config
+      - unit_tests
+    if: fromJson(needs.checkout_and_config.outputs.serve_test_matrix)[0] != null
+    uses: ./.github/workflows/functional_tests_serve.yml
+    with:
+      platform: ${{ inputs.platform }}
+      test_matrix: ${{ needs.checkout_and_config.outputs.serve_test_matrix }}
+      image: ${{ needs.checkout_and_config.outputs.ci_image }}
+      runs_on: ${{ needs.checkout_and_config.outputs.runs_on }}
+      container_volumes: ${{ needs.checkout_and_config.outputs.container_volumes }}
+      container_options: ${{ needs.checkout_and_config.outputs.container_options }}
+      source_artifact: flagscale-source-${{ github.sha }}
+      conda_env: flagscale-inference  # Optional: can be empty for non-conda environments
+      conda_path: "/root/miniconda3"  # Optional: specify custom conda path, empty for auto-detection
+
   functional_tests_rl:
     needs:
       - checkout_and_config
@@ -174,7 +192,7 @@ jobs:
       container_volumes: ${{ needs.checkout_and_config.outputs.container_volumes }}
       container_options: ${{ needs.checkout_and_config.outputs.container_options }}
       source_artifact: flagscale-source-${{ github.sha }}
-      conda_env: flagscale-rl  # Optional: can be empty for non-conda environments
+      conda_env: flagscale-RL  # Optional: can be empty for non-conda environments
       conda_path: "/root/miniconda3"  # Optional: specify custom conda path, empty for auto-detection
 
   all_tests_complete:
@@ -187,6 +205,7 @@ jobs:
       - functional_tests_train
       - functional_tests_hetero_train
       - functional_tests_inference
+      - functional_tests_serve
       - functional_tests_rl
     runs-on: ubuntu-latest
     if: always()
@@ -217,6 +236,12 @@ jobs:
           if [ "${{ needs.functional_tests_inference.result }}" != "success" ] && \
              [ "${{ needs.functional_tests_inference.result }}" != "skipped" ]; then
             echo "❌ Inference functional tests failed"
+            failed=true
+          fi
+
+          if [ "${{ needs.functional_tests_serve.result }}" != "success" ] && \
+             [ "${{ needs.functional_tests_serve.result }}" != "skipped" ]; then
+            echo "❌ RL functional tests failed"
             failed=true
           fi
 

@@ -1,5 +1,5 @@
 #!/bin/bash
-# Source dependencies for inference task (CUDA platform)
+# Source dependencies for serve task (CUDA platform)
 #
 # This script is called by install.sh after base and pip requirements.
 # It only handles source dependencies (git repos, etc.)
@@ -34,7 +34,7 @@ install_vllm_lm() {
 }
 
 main() {
-    log_step "Installing source dependencies for inference task"
+    log_step "Installing source dependencies for serve task"
     install_vllm_lm
 }
 
