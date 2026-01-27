@@ -130,6 +130,33 @@ jobs:
           eval $INSTALL_CMD
         timeout-minutes: 90
 
+      - name:  Set up flash-attn for inference(robobrain2)
+        if: ${{ matrix.test_config.model == 'robobrain2' }}
+        timeout-minutes: 15
+        working-directory: /__w/FlagScale/FlagScale
+        run: |
+          CONDA_ENV='${{ inputs.conda_env }}'
+          CONDA_PATH='${{ inputs.conda_path }}'
+
+          # Source conda utilities for reusable functions
+          source ./tools/install/utils/conda_utils.sh
+
+          # Conditionally activate conda environment if specified
+          if [ -n "$CONDA_ENV" ]; then
+            if activate_conda "$CONDA_ENV" "$CONDA_PATH"; then
+              : # Success message already displayed by activate_conda
+            else
+              echo "⚠️  Conda environment requested but conda not found"
+              echo "Continuing without conda activation..."
+            fi
+          else
+            echo "ℹ️  Running tests with system Python"
+          fi
+
+          pip uninstall -y flash_attn
+          pip install flash-attn==2.6.3 --no-build-isolation
+          python -c "import flash_attn; import flash_attn.layers; print('FlashAttention loaded successfully, version:', flash_attn.__version__)"
+
       - name: Run functional tests
         id: functional_test
         run: |
