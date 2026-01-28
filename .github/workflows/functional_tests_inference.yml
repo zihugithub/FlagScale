@@ -109,7 +109,33 @@ jobs:
         run: |
           git config --global --add safe.directory $PROJECT_ROOT
 
+      - name: Check sccache installation and get path
+        id: get_sccache_path
+        timeout-minutes: 15
+        run: |
+          set -euo pipefail
+          cd $PROJECT_ROOT
+
+          if ! command -v sccache &> /dev/null; then
+            echo "❌ sccache not found in PATH, running auto-installer..."
+            source ./tools/install/utils/install-sccache.sh
+          fi
+
+          SCCACHE_PATH=$(command -v sccache)
+          echo "sccache_path=${SCCACHE_PATH}" >> $GITHUB_OUTPUT
+
+          echo "Found sccache at: ${SCCACHE_PATH}"
+
       - name: Install dependencies for inference
+        env:
+          SCCACHE_CPP2: 1
+          CUDA_CCACHE: 1
+          SCCACHE_VERBOSE: 0
+          SCCACHE_CACHE_SIZE: 20G
+          SCCACHE_DIR: /github/home/.cache/sccache
+          CMAKE_C_COMPILER_LAUNCHER: ${{ steps.get_sccache_path.outputs.sccache_path }}
+          CMAKE_CXX_COMPILER_LAUNCHER: ${{ steps.get_sccache_path.outputs.sccache_path }}
+          CMAKE_CUDA_COMPILER_LAUNCHER: ${{ steps.get_sccache_path.outputs.sccache_path }}
         run: |
           set -euo pipefail
           cd $PROJECT_ROOT
@@ -130,11 +156,13 @@ jobs:
           eval $INSTALL_CMD
         timeout-minutes: 90
 
-      - name:  Set up flash-attn for inference(robobrain2)
+      - name: Set up flash-attn for inference(robobrain2)
         if: ${{ matrix.test_config.model == 'robobrain2' }}
         timeout-minutes: 15
-        working-directory: /__w/FlagScale/FlagScale
         run: |
+          set -euo pipefail
+          cd $PROJECT_ROOT
+
           CONDA_ENV='${{ inputs.conda_env }}'
           CONDA_PATH='${{ inputs.conda_path }}'
 
