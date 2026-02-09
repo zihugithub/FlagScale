@@ -146,6 +146,8 @@ from megatron.core.msc_utils import MultiStorageClientFeature, open_file
 # Import PEFT from peft module
 from megatron.training.peft import PEFT
 
+from megatron.plugin.accelerator import get_accelerator
+mg_accelerator = get_accelerator()
 
 def destroy_global_state():
     destroy_global_vars()
@@ -1243,7 +1245,7 @@ def get_model(model_provider_func, model_type=ModelType.encoder_or_decoder, wrap
         and not args.init_model_with_meta_device
     ):
         for model_module in model:
-            model_module.cuda(torch.cuda.current_device())
+            model_module.to(mg_accelerator.current_device())
 
     # Fp16 conversion.
     if args.fp16 or args.bf16:
@@ -1314,7 +1316,7 @@ def get_model(model_provider_func, model_type=ModelType.encoder_or_decoder, wrap
             if not ddp_config.overlap_grad_reduce:
                 ddp_config.bucket_size = None
 
-        with torch.cuda.stream(torch.cuda.Stream()):
+        with mg_accelerator.stream(mg_accelerator.Stream()):
             model = [
                 DP(
                     config=config,
@@ -1624,7 +1626,7 @@ def train_step(forward_step_func, data_iterator, model, optimizer, opt_param_sch
 
     # Empty unused memory.
     if args.empty_unused_memory_level >= 1:
-        torch.cuda.empty_cache()
+        mg_accelerator.empty_cache()
 
     # Vision gradients.
     if args.vision_pretraining and args.vision_pretraining_type == "dino":
@@ -1661,7 +1663,7 @@ def train_step(forward_step_func, data_iterator, model, optimizer, opt_param_sch
 
     # Empty unused memory.
     if args.empty_unused_memory_level >= 2:
-        torch.cuda.empty_cache()
+        mg_accelerator.empty_cache()
 
     if mpu.is_pipeline_last_stage(ignore_virtual=True):
         # Average loss across microbatches.
@@ -1876,7 +1878,7 @@ def training_log(
             if wandb_writer:
                 wandb_writer.log({'grpo_collection_iteration': grpo_collection_iteration}, iteration)
         if args.log_memory_to_tensorboard:
-            mem_stats = torch.cuda.memory_stats()
+            mem_stats = mg_accelerator.memory_stats()
             if writer:
                 writer.add_scalar(
                     "mem-reserved-bytes", mem_stats["reserved_bytes.all.current"], iteration
@@ -2148,7 +2150,7 @@ def post_training_step_callbacks(
 
     # Bring CPU and GPU back in sync if on right iteration.
     if args.train_sync_interval and iteration % args.train_sync_interval == 0:
-        torch.cuda.synchronize()
+        mg_accelerator.synchronize()
 
     # Straggler detector.
     if iteration % args.log_interval == 0 and args.log_straggler:
@@ -2997,7 +2999,7 @@ def evaluate(
 
             # Empty unused memory
             if args.empty_unused_memory_level >= 1:
-                torch.cuda.empty_cache()
+                mg_accelerator.empty_cache()
 
             if mpu.is_pipeline_last_stage(ignore_virtual=True):
                 # Reduce across processes.
@@ -3005,7 +3007,7 @@ def evaluate(
                     if key not in total_loss_dict:
                         total_loss_dict[key] = torch.tensor(
                             [0.0, 0.0], dtype=torch.float
-                        ).cuda()
+                        ).to(mg_accelerator.device())
                     val = [x[key].view(-1) for x in loss_dicts]
 
                     if val[0].numel() == 2:
@@ -3042,7 +3044,7 @@ def evaluate(
             if args.exit_duration_in_mins:
                 train_time = (time.time() - _TRAIN_START_TIME) / 60.0
                 done_cuda = torch.tensor(
-                    [train_time > args.exit_duration_in_mins], dtype=torch.int, device='cuda'
+                    [train_time > args.exit_duration_in_mins], dtype=torch.int, device=mg_accelerator.device()
                 )
                 torch.distributed.all_reduce(done_cuda, op=torch.distributed.ReduceOp.MAX)
                 done = done_cuda.item()

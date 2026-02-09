@@ -64,6 +64,9 @@ _CHECKPOINT_VERSION = None
 logger = getLogger(__name__)
 _NON_PERSISTENT_CKPT_SUBDIR = 'non_persistent'
 
+from megatron.plugin.accelerator import get_accelerator
+mg_accelerator = get_accelerator()
+
 def set_checkpoint_version(value):
     global _CHECKPOINT_VERSION
     if _CHECKPOINT_VERSION is not None:
@@ -318,7 +321,7 @@ def get_rng_state(ckpt_format: str):
         'random_rng_state': random.getstate(),
         'np_rng_state': np.random.get_state(),
         'torch_rng_state': torch.get_rng_state(),
-        'cuda_rng_state': torch.cuda.get_rng_state(),
+        'cuda_rng_state': mg_accelerator.get_rng_state(),
         'rng_tracker_states': tensor_parallel.get_cuda_rng_tracker().get_states()}
 
     rng_state_list = None
@@ -1768,7 +1771,7 @@ def load_checkpoint(ddp_model, optimizer, opt_param_scheduler, load_arg='load', 
                 random.setstate(rng_state['random_rng_state'])
                 np.random.set_state(rng_state['np_rng_state'])
                 torch.set_rng_state(rng_state['torch_rng_state'])
-                torch.cuda.set_rng_state(rng_state['cuda_rng_state'])
+                mg_accelerator.set_rng_state(rng_state['cuda_rng_state'])
                 # Check for empty states array
                 if not rng_state['rng_tracker_states']:
                     raise KeyError
@@ -1778,7 +1781,7 @@ def load_checkpoint(ddp_model, optimizer, opt_param_scheduler, load_arg='load', 
                 random.setstate(state_dict['random_rng_state'])
                 np.random.set_state(state_dict['np_rng_state'])
                 torch.set_rng_state(state_dict['torch_rng_state'])
-                torch.cuda.set_rng_state(state_dict['cuda_rng_state'])
+                mg_accelerator.set_rng_state(state_dict['cuda_rng_state'])
                 # Check for empty states array
                 if not state_dict['rng_tracker_states']:
                     raise KeyError
@@ -1805,7 +1808,7 @@ def load_checkpoint(ddp_model, optimizer, opt_param_scheduler, load_arg='load', 
        or is_last_rank():
         wandb_utils.on_load_checkpoint_success(checkpoint_name, load_dir)
 
-    torch.cuda.empty_cache()
+    mg_accelerator.empty_cache()
 
     if iteration > 0:
         # Notify FT that a checkpoint was loaded.

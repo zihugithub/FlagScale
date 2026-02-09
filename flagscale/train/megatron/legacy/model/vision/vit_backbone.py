@@ -18,6 +18,9 @@ from megatron.legacy.model.module import MegatronModule
 
 CLASS_TOKEN_LENGTH = 8
 
+from megatron.plugin.accelerator import get_accelerator
+mg_accelerator = get_accelerator()
+
 class VitMlpHead(MegatronModule):
     """Pooler layer.
 
@@ -173,7 +176,7 @@ class VitBackbone(MegatronModule):
                     torch.randn(1, CLASS_TOKEN_LENGTH, self.hidden_size)
                 )
                 torch.nn.init.zeros_(self.cls_token)
-            self.position_ids = torch.arange(self.seq_length).expand(1, -1).cuda()
+            self.position_ids = torch.arange(self.seq_length).expand(1, -1).to(mg_accelerator.device())
 
             # Linear encoder
             self.linear_encoder = torch.nn.Linear(

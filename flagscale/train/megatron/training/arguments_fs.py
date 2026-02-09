@@ -15,6 +15,9 @@ except:
     )
 from megatron.plugin.hetero.parallel_context import RankMapper
 
+from megatron.plugin.accelerator import get_accelerator
+mg_accelerator = get_accelerator()
+
 class FSTrainArguments:
     """Extend the Megatron arguments with FlagScale specific arguments."""
 
@@ -31,7 +34,7 @@ class FSTrainArguments:
         """Initialize torch.distributed and core model parallel."""
         args = self.args
 
-        device_count = torch.cuda.device_count()
+        device_count = mg_accelerator.device_count()
         if torch.distributed.is_initialized():
 
             if args.rank == 0:
@@ -48,8 +51,8 @@ class FSTrainArguments:
                 print("> initializing torch distributed ...", flush=True)
             # Manually set the device ids.
             if device_count > 0:
-                torch.cuda.set_device(args.local_rank)
-                device_id = torch.device(f"cuda:{args.local_rank}")
+                mg_accelerator.set_device(args.local_rank)
+                device_id = mg_accelerator.device(args.local_rank)
             else:
                 device_id = None
 

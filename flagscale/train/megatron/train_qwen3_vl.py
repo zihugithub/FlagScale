@@ -85,6 +85,8 @@ from flagscale.models.megatron.qwen3_vl.transformer_config import (
     get_vision_projection_config
 )
 
+from megatron.plugin.accelerator import get_accelerator
+mg_accelerator = get_accelerator()
 
 from tools.datasets.qwenvl.data.dataset_helpers import TaskEncoder, print_error_handler
 #### especially for qwen2.5-vl ####
@@ -198,7 +200,7 @@ def get_batch(data_iterator, model: Qwen3VLModel = None) -> Tuple:
     position_ids = None
 
     # Broadcast data.
-    torch.cuda.nvtx.range_push("get_data")
+    mg_accelerator.range_push("get_data")
     if data_iterator is not None and get_tensor_model_parallel_rank() == 0:
         data = next(data_iterator)
         # pad_token_id = get_tokenizer().pad_token_id
@@ -225,7 +227,7 @@ def get_batch(data_iterator, model: Qwen3VLModel = None) -> Tuple:
 
     args = get_args()
     if data_text.shape[-1] == args.max_padding_length and get_pipeline_model_parallel_rank() == 0:
-        torch.cuda.empty_cache()
+        mg_accelerator.empty_cache()
     # shape: n_video_samples
     video_thw_grids = broadcast_data(["video_thw_grids"], data, torch.long)["video_thw_grids"]
     # shape: n_video_samples
@@ -234,23 +236,23 @@ def get_batch(data_iterator, model: Qwen3VLModel = None) -> Tuple:
 
     image_input_mask = broadcast_data(["image_input_mask"], data, torch.bool)["image_input_mask"]
     video_input_mask = broadcast_data(["video_input_mask"], data, torch.bool)["video_input_mask"]
-    torch.cuda.nvtx.range_pop()
+    mg_accelerator.range_pop()
 
-    torch.cuda.nvtx.range_push("index tokens")
+    mg_accelerator.range_push("index tokens")
     tokenizer = get_tokenizer()
 
     tokens = data_text.long().contiguous()
     labels = target.contiguous()
 
     assert tokens.shape == labels.shape, f"tokens: {tokens.shape} != labels: {labels.shape}"
-    torch.cuda.nvtx.range_pop()
+    mg_accelerator.range_pop()
 
     # NOTE: no sequence packing in LLM inputs
-    torch.cuda.nvtx.range_push("get_ltor_masks_and_position_ids")
+    mg_accelerator.range_push("get_ltor_masks_and_position_ids")
     attention_mask, loss_mask, position_ids = get_ltor_masks_and_position_ids(
         tokens, image_thw_grids, video_thw_grids, labels, pad_token=tokenizer.pad_token_id, second_per_grid_ts=second_per_grid_ts, ignore_index=IGNORE_IDX, model=model,
     )
-    torch.cuda.nvtx.range_pop()
+    mg_accelerator.range_pop()
 
     return (
         tokens,

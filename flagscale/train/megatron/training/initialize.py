@@ -38,6 +38,8 @@ from megatron.plugin.hetero.parallel_context import set_parallel_context
 
 logger = logging.getLogger(__name__)
 
+from megatron.plugin.accelerator import get_accelerator
+mg_accelerator = get_accelerator()
 
 def initialize_megatron(
     extra_args_provider=None,
@@ -60,7 +62,7 @@ def initialize_megatron(
     """
     if not allow_no_cuda:
         # Make sure cuda is available.
-        assert torch.cuda.is_available(), "Megatron requires CUDA."
+        assert mg_accelerator.is_available(), "Megatron requires CUDA."
 
     # Parse arguments
     if parsed_args is None:
@@ -153,7 +155,7 @@ def initialize_megatron(
         if args.num_experts is not None:
             from megatron.core.transformer.moe.router import MoEAuxLossAutoScaler
 
-            MoEAuxLossAutoScaler.set_loss_scale(torch.ones(1, device=torch.cuda.current_device()))
+            MoEAuxLossAutoScaler.set_loss_scale(torch.ones(1, device=mg_accelerator.current_device()))
 
         # Set tensorboard writer and wandb writer.
         set_global_writers(args)
@@ -334,7 +336,7 @@ def _initialize_distributed(get_embedding_ranks, get_position_embedding_ranks, s
     """Initialize torch.distributed and core model parallel."""
     args = get_args()
 
-    device_count = torch.cuda.device_count()
+    device_count = mg_accelerator.device_count()
     if torch.distributed.is_initialized():
 
         if args.rank == 0:
@@ -351,14 +353,14 @@ def _initialize_distributed(get_embedding_ranks, get_position_embedding_ranks, s
             print("> initializing torch distributed ...", flush=True)
         # Manually set the device ids.
         if device_count > 0:
-            torch.cuda.set_device(args.local_rank)
+            mg_accelerator.set_device(args.local_rank)
             device_id = torch.device(f'cuda:{args.local_rank}')
         else:
             device_id = None
 
         # Set to non-default stream for cudagraph capturing.
         if args.cuda_graph_impl == "transformer_engine":
-            torch.cuda.set_stream(torch.cuda.Stream())
+            mg_accelerator.set_stream(mg_accelerator.Stream())
 
         # Call the init process
         init_process_group_kwargs = {
@@ -456,7 +458,7 @@ def _set_random_seed(
         random.seed(seed)
         np.random.seed(seed)
         torch.manual_seed(seed)
-        if torch.cuda.device_count() > 0:
+        if mg_accelerator.device_count() > 0:
             tensor_parallel.model_parallel_cuda_manual_seed(
                 seed, te_rng_tracker, inference_rng_tracker, use_cudagraphable_rng
             )
@@ -557,7 +559,7 @@ def _warmup_jit_function():
         for _ in range(5):
             output = bias_dropout_add_fused_train([input, bias], residual, dropout_rate)
     del bias, input, residual, output
-    torch.cuda.empty_cache()
+    mg_accelerator.empty_cache()
 
 
 def setup_logging() -> None:

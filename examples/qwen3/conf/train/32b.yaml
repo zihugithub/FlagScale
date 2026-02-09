@@ -7,8 +7,8 @@ system:
   context_parallel_size: 1
   sequence_parallel: true
   use_distributed_optimizer: true
-  # overlap_grad_reduce: true
-  # overlap_param_gather: true
+  overlap_grad_reduce: true
+  overlap_param_gather: true
   precision:
     bf16: true
     attention_softmax_in_fp32: true
@@ -30,8 +30,15 @@ system:
     ckpt_format: ${experiment.ckpt_format}
 
 model:
+  te_fl_prefer: vendor
+  # te_fl_prefer: flagos
+  # enable_flag_gems: True
+  # profile: true
+  # profile_step_start: 3
+  # profile_step_end: 5
+  # profile_ranks: [0, 7]
   transformer_impl: transformer_engine
-  num_layers: 64
+  num_layers: 8
   hidden_size: 5120
   ffn_hidden_size: 25600
   num_attention_heads: 64
@@ -58,7 +65,7 @@ model:
   seed: ${experiment.seed}
   finetune: false
   micro_batch_size: 1
-  global_batch_size: 128 #2048
+  global_batch_size: 8 #2048
   eval_iters: 0
   train_iters: 102400
 
@@ -78,11 +85,13 @@ model:
 data:
   reset_position_ids: True
   reset_attention_mask: True
-  data_path: /path
+  # data_path: /share/project/lixianduo/demo_data/pile/pile_wikipedia_demo
+  data_path: /share/project/lizhiyu/hetero_data/HQ_wo_fim/Nemotron-CC-high-actual-actual-high_text_document
   split: 1
   no_mmap_bin_files: true
   tokenizer:
+    legacy_tokenizer: true
     tokenizer_type: QwenTokenizerFS
-    tokenizer_path: examples/aquila/qwentokenizer
+    tokenizer_path: /share/project/lixianduo/qwentokenizer
     vocab_size: 151851
     make_vocab_size_divisible_by: 64

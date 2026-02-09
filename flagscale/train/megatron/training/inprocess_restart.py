@@ -21,6 +21,8 @@ from megatron.training.async_utils import (
 
 from . import arguments
 
+from megatron.plugin.accelerator import get_accelerator
+mg_accelerator = get_accelerator()
 
 def destroy_state():
     from . import training
@@ -52,7 +54,7 @@ def inprocess_restart(train, args):
         )
     ]
     if args.inprocess_granularity == 'node':
-        device_count = torch.cuda.device_count()
+        device_count = mg_accelerator.device_count()
 
         layers.append(
             inprocess.rank_assignment.Layer(
@@ -70,7 +72,7 @@ def inprocess_restart(train, args):
     if args.inprocess_empty_cuda_cache:
         finalize.append(
             inprocess.finalize.ThreadedFinalize(
-                timeout=timedelta(seconds=10), fn=torch.cuda.empty_cache
+                timeout=timedelta(seconds=10), fn=mg_accelerator.empty_cache
             )
         )
 
@@ -156,4 +158,4 @@ def maybe_force_nccl_backend_init(device_id):
     if args.inprocess_restart:
         tensor = torch.ones(128, device=device_id)
         torch.distributed.all_reduce(tensor)
-        torch.cuda.synchronize()
+        mg_accelerator.synchronize()
