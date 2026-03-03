@@ -1,38 +1,38 @@
 name: Build Docker Images - CUDA
 
 on:
-#   # Manual trigger with configurable options
-#   workflow_dispatch:
-#     inputs:
-#       task:
-#         description: 'Task to build'
-#         required: true
-#         type: choice
-#         options:
-#           - train
-#           - inference
-#           - all
-#         default: 'train'
-#       target:
-#         description: 'Build target stage (dev includes dev tools, release is production)'
-#         required: true
-#         type: choice
-#         options:
-#           - dev
-#           - release
-#         default: 'dev'
-#       push:
-#         description: 'Push image to registry'
-#         type: boolean
-#         default: true
-#       no_cache:
-#         description: 'Build without Docker cache'
-#         type: boolean
-#         default: false
-#       build_all_tasks:
-#         description: 'Build all tasks (train, inference, all) - overrides task selection'
-#         type: boolean
-#         default: false
+  # Manual trigger with configurable options
+  workflow_dispatch:
+    inputs:
+      task:
+        description: 'Task to build'
+        required: true
+        type: choice
+        options:
+          - train
+          - inference
+          - all
+        default: 'train'
+      target:
+        description: 'Build target stage (dev includes dev tools, release is production)'
+        required: true
+        type: choice
+        options:
+          - dev
+          - release
+        default: 'dev'
+      push:
+        description: 'Push image to registry'
+        type: boolean
+        default: true
+      no_cache:
+        description: 'Build without Docker cache'
+        type: boolean
+        default: false
+      build_all_tasks:
+        description: 'Build all tasks (train, inference, all) - overrides task selection'
+        type: boolean
+        default: false
 
   # Auto-trigger on docker-related changes to main
   push:
