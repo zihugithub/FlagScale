@@ -43,31 +43,6 @@ on:
       - 'tools/install/**'
       - 'requirements/**'
 
-  # Reusable by other workflows
-  workflow_call:
-    inputs:
-      task:
-        description: 'Task to build (empty string builds all tasks)'
-        type: string
-        default: ''
-      target:
-        description: 'Build target stage'
-        type: string
-        default: 'dev'
-      push:
-        description: 'Push image to registry'
-        type: boolean
-        default: true
-      no_cache:
-        description: 'Build without Docker cache'
-        type: boolean
-        default: false
-    secrets:
-      CONTAINER_REGISTRY:
-        required: false
-      REGISTRY_USERNAME:
-        required: false
-
 concurrency:
   group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
   cancel-in-progress: true
@@ -104,9 +79,6 @@ jobs:
 
           if [ "$EVENT" = "workflow_dispatch" ] && [ "${{ inputs.build_all_tasks }}" != "true" ]; then
             # Manual trigger: build selected task only
-            echo 'matrix={"task":["${{ inputs.task }}"]}' >> $GITHUB_OUTPUT
-          elif [ "$EVENT" = "workflow_call" ] && [ -n "${{ inputs.task }}" ]; then
-            # Called by another workflow with a specific task
             echo 'matrix={"task":["${{ inputs.task }}"]}' >> $GITHUB_OUTPUT
           else
             # Push to main or build_all_tasks=true: build all tasks
