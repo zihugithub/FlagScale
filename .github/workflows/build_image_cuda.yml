@@ -75,16 +75,15 @@ jobs:
       - name: Determine build matrix
         id: set-matrix
         run: |
-          echo "hello"
-          # EVENT="${{ github.event_name }}"
+          EVENT="${{ github.event_name }}"
 
-          # if [ "$EVENT" = "workflow_dispatch" ] && [ "${{ inputs.build_all_tasks }}" != "true" ]; then
-          #   # Manual trigger: build selected task only
-          #   echo 'matrix={"task":["${{ inputs.task }}"]}' >> $GITHUB_OUTPUT
-          # else
-          #   # Push to main or build_all_tasks=true: build all tasks
-          #   echo 'matrix={"task":["train","inference","all"]}' >> $GITHUB_OUTPUT
-          # fi
+          if [ "$EVENT" = "workflow_dispatch" ] && [ "${{ inputs.build_all_tasks }}" != "true" ]; then
+            # Manual trigger: build selected task only
+            echo 'matrix={"task":["${{ inputs.task }}"]}' >> $GITHUB_OUTPUT
+          else
+            # Push to main or build_all_tasks=true: build all tasks
+            echo 'matrix={"task":["train","inference","all"]}' >> $GITHUB_OUTPUT
+          fi
 
       - name: Set build parameters
         id: params
