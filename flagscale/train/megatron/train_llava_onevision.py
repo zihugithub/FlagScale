@@ -39,8 +39,8 @@ from flagscale.models.megatron.llava_onevision.dataloader_provider import (
 )
 from megatron.training.training import pretrain
 
-from megatron.plugin.accelerator import get_accelerator
-mg_accelerator = get_accelerator()
+from megatron.plugin.platform import get_platform
+cur_platform = get_platform()
 
 
 def model_provider(
@@ -178,7 +178,7 @@ def get_batch(data_iterator):
     args = get_args()
 
     # Broadcast data.
-    mg_accelerator.range_push("get_data")
+    cur_platform.range_push("get_data")
     if data_iterator is not None:
         data = next(data_iterator)
     else:
@@ -264,7 +264,7 @@ def get_batch(data_iterator):
             raise ValueError(f"Unknown modality {modality.item()}")
     modalities = modalities_list
 
-    mg_accelerator.range_pop()
+    cur_platform.range_pop()
 
     tokenizer = get_tokenizer()
     if not hasattr(tokenizer, "pad_token_id"):
@@ -276,7 +276,7 @@ def get_batch(data_iterator):
         tokenizer.padding_side = "right"
 
     # Padding input_ids and labels
-    mg_accelerator.range_push("pad_sequence_and_attn_mask")
+    cur_platform.range_push("pad_sequence_and_attn_mask")
     # Truncation and padding to the max len
     input_ids = pad_sequence(
         input_ids,
@@ -289,7 +289,7 @@ def get_batch(data_iterator):
     )
     # Attention mask same as LLaVA-NeXT
     attention_mask = input_ids.ne(tokenizer.pad_token_id)
-    mg_accelerator.range_pop()
+    cur_platform.range_pop()
 
     return input_ids, labels, attention_mask, images, image_sizes, modalities
 

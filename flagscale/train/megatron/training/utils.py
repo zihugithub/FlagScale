@@ -49,8 +49,8 @@ from megatron.core.utils import (
 from megatron.legacy.model.module import param_is_not_shared
 
 from megatron.plugin.utils import get_device_type_for_comm
-from megatron.plugin.accelerator import get_accelerator
-mg_accelerator = get_accelerator()
+from megatron.plugin.platform import get_platform
+cur_platform = get_platform()
 
 def calc_params_l2_norm(model, force_create_fp32_copy=False):
     """Calculate l2 norm of parameters"""
@@ -110,14 +110,14 @@ def calc_params_l2_norm(model, force_create_fp32_copy=False):
                         params_data.append(param.data)
 
     # Calculate norm.
-    dummy_overflow_buf = torch.tensor([0], dtype=torch.int, device=mg_accelerator.device())
+    dummy_overflow_buf = torch.tensor([0], dtype=torch.int, device=cur_platform.device())
     if len(params_data) > 0:
         norm, _ = multi_tensor_applier(
             multi_tensor_l2norm, dummy_overflow_buf, [params_data], False  # no per-parameter norm.
         )
         norm_2 = norm * norm
     else:
-        norm_2 = torch.zeros((1,), dtype=torch.float32, device=mg_accelerator.device())
+        norm_2 = torch.zeros((1,), dtype=torch.float32, device=cur_platform.device())
 
     if data_parallel_group is not None:
         torch.distributed.all_reduce(
@@ -220,8 +220,8 @@ def calc_params_l2_norm(model, force_create_fp32_copy=False):
         norm_2 += moe_norm_2
 
     if comm_device == "cpu":
-        norm_2 = norm_2.to(mg_accelerator.device())
-        moe_norm_2 = moe_norm_2.to(mg_accelerator.device())
+        norm_2 = norm_2.to(cur_platform.device())
+        moe_norm_2 = moe_norm_2.to(cur_platform.device())
 
     return norm_2.item() ** 0.5
 
@@ -232,12 +232,12 @@ def calc_dtensor_params_l2_norm(params):
     for param in params:
         params_data[param._spec].append(param._local_tensor)
 
-    total_norm_2 = torch.zeros((1,), dtype=torch.float32, device=mg_accelerator.device())
-    dummy_overflow_buf = torch.zeros((1,), dtype=torch.int, device=mg_accelerator.device())
+    total_norm_2 = torch.zeros((1,), dtype=torch.float32, device=cur_platform.device())
+    dummy_overflow_buf = torch.zeros((1,), dtype=torch.int, device=cur_platform.device())
     for dtensor_spec, local_tensors in params_data.items():
         local_tensors = [t for t in local_tensors if t.numel() > 0]
         if len(local_tensors) == 0:
-            norm = torch.zeros((1,), dtype=torch.float32, device=mg_accelerator.device())
+            norm = torch.zeros((1,), dtype=torch.float32, device=cur_platform.device())
         else:
             norm, _ = multi_tensor_applier(
                 multi_tensor_l2norm, dummy_overflow_buf, [local_tensors], False  # no per-parameter norm.
@@ -327,10 +327,10 @@ def report_memory(name):
     """Simple GPU memory report."""
     mega_bytes = 1024.0 * 1024.0
     string = name + ' memory (MB)'
-    string += ' | allocated: {}'.format(mg_accelerator.memory_allocated() / mega_bytes)
-    string += ' | max allocated: {}'.format(mg_accelerator.max_memory_allocated() / mega_bytes)
-    string += ' | reserved: {}'.format(mg_accelerator.memory_reserved() / mega_bytes)
-    string += ' | max reserved: {}'.format(mg_accelerator.max_memory_reserved() / mega_bytes)
+    string += ' | allocated: {}'.format(cur_platform.memory_allocated() / mega_bytes)
+    string += ' | max allocated: {}'.format(cur_platform.max_memory_allocated() / mega_bytes)
+    string += ' | reserved: {}'.format(cur_platform.memory_reserved() / mega_bytes)
+    string += ' | max reserved: {}'.format(cur_platform.max_memory_reserved() / mega_bytes)
     if mpu.get_data_parallel_rank() == 0:
         print("[Rank {}] {}".format(torch.distributed.get_rank(), string), flush=True)
 
@@ -499,7 +499,7 @@ def is_first_or_last_pipeline_stage(vp_stage):
 
 def get_device_arch_version():
     """Returns GPU arch version (8: Ampere, 9: Hopper, 10: Blackwell, ...)"""
-    return mg_accelerator.get_device_properties(mg_accelerator.device(0)).major
+    return cur_platform.get_device_properties(cur_platform.device(0)).major
 
 
 def append_to_progress_log(string, barrier=True):
@@ -585,15 +585,15 @@ def get_batch_on_this_tp_rank(data_iterator):
         assert data_iterator is not None
         data = next(data_iterator)
         batch = {
-            'tokens': data["tokens"].to(device=mg_accelerator.device(), non_blocking=True),
-            'labels': data["labels"].to(device=mg_accelerator.device(), non_blocking=True),
-            'loss_mask': data["loss_mask"].to(device=mg_accelerator.device(), non_blocking=True),
+            'tokens': data["tokens"].to(device=cur_platform.device(), non_blocking=True),
+            'labels': data["labels"].to(device=cur_platform.device(), non_blocking=True),
+            'loss_mask': data["loss_mask"].to(device=cur_platform.device(), non_blocking=True),
             'attention_mask': (
                 None
                 if "attention_mask" not in data
-                else data["attention_mask"].to(device=mg_accelerator.device(), non_blocking=True)
+                else data["attention_mask"].to(device=cur_platform.device(), non_blocking=True)
             ),
-            'position_ids': data["position_ids"].to(device=mg_accelerator.device(), non_blocking=True),
+            'position_ids': data["position_ids"].to(device=cur_platform.device(), non_blocking=True),
         }
 
         if args.pipeline_model_parallel_size == 1:
@@ -629,30 +629,30 @@ def get_batch_on_this_tp_rank(data_iterator):
         tokens = torch.empty(
             (args.micro_batch_size, args.seq_length),
             dtype=torch.int64,
-            device=mg_accelerator.device(),
+            device=cur_platform.device(),
         )
         labels = torch.empty(
             (args.micro_batch_size, args.seq_length),
             dtype=torch.int64,
-            device=mg_accelerator.device(),
+            device=cur_platform.device(),
         )
         loss_mask = torch.empty(
             (args.micro_batch_size, args.seq_length),
             dtype=torch.float32,
-            device=mg_accelerator.device(),
+            device=cur_platform.device(),
         )
         if args.create_attention_mask_in_dataloader:
             attention_mask = torch.empty(
                 (args.micro_batch_size, 1, args.seq_length, args.seq_length),
                 dtype=torch.bool,
-                device=mg_accelerator.device(),
+                device=cur_platform.device(),
             )
         else:
             attention_mask = None
         position_ids = torch.empty(
             (args.micro_batch_size, args.seq_length),
             dtype=torch.int64,
-            device=mg_accelerator.device(),
+            device=cur_platform.device(),
         )
 
         if args.pipeline_model_parallel_size == 1:
@@ -742,10 +742,10 @@ def get_nvtx_range():
                 timers = get_timers()
                 timers(msg, log_level=0).start()
             try:
-                mg_accelerator.range_push(msg)
+                cur_platform.range_push(msg)
                 yield
             finally:
-                mg_accelerator.range_pop()
+                cur_platform.range_pop()
                 if time:
                     timers(msg, log_level=0).stop()
 

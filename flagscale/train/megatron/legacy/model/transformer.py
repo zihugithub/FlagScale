@@ -73,8 +73,8 @@ except ImportError:
         hyperparameters: transformer hyperparameters
 """
 
-from megatron.plugin.accelerator import get_accelerator
-mg_accelerator = get_accelerator()
+from megatron.plugin.platform import get_platform
+cur_platform = get_platform()
 
 class DropPath(MegatronModule):
     """Drop paths (Stochastic Depth) per sample
@@ -239,7 +239,7 @@ class SwitchMLP(MegatronModule):
 
         # TODO pre allocate memory
         output = torch.empty(dim_size, dtype=local_indices.dtype,
-                             device=mg_accelerator.device())
+                             device=cur_platform.device())
         torch.distributed._all_gather_base(
             output, local_indices.contiguous(), group=self.tp_ep_group
         )
@@ -655,7 +655,7 @@ class ParallelAttention(MegatronModule):
             num_attention_heads,
             self.hidden_size_per_attention_head,
             dtype=self.params_dtype,
-            device=mg_accelerator.device())
+            device=cur_platform.device())
 
     def forward(self, hidden_states, attention_mask,
                 encoder_output=None, inference_context=None,

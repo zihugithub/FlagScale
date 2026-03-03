@@ -12,8 +12,8 @@ import random
 import sys
 sys.path.append("../..")
 
-from megatron.plugin.accelerator import get_accelerator
-mg_accelerator = get_accelerator()
+from megatron.plugin.platform import get_platform
+cur_platform = get_platform()
 
 def test_parallel_embedding(tensor_model_parallel_size):
 
@@ -32,11 +32,11 @@ def test_parallel_embedding(tensor_model_parallel_size):
 
     set_random_seed(123)
     input_data = torch.LongTensor(
-        size=(batch_size, seq_length)).random_(0, vocab_size).to(mg_accelerator.device())
-    loss_weight = torch.randn([batch_size, seq_length, hidden_size]).to(mg_accelerator.device())
+        size=(batch_size, seq_length)).random_(0, vocab_size).to(cur_platform.device())
+    loss_weight = torch.randn([batch_size, seq_length, hidden_size]).to(cur_platform.device())
 
     set_random_seed(seed)
-    embedding_original = torch.nn.Embedding(vocab_size, hidden_size).to(mg_accelerator.device())
+    embedding_original = torch.nn.Embedding(vocab_size, hidden_size).to(cur_platform.device())
 
     output = embedding_original(input_data)
     loss_original = torch.mul(output, loss_weight).sum()
@@ -44,14 +44,14 @@ def test_parallel_embedding(tensor_model_parallel_size):
 
     set_random_seed(seed)
     embedding_parallel = layers.ParallelEmbedding(
-        vocab_size, hidden_size, init_method=init.normal_).to(mg_accelerator.device())
+        vocab_size, hidden_size, init_method=init.normal_).to(cur_platform.device())
     output = embedding_parallel(input_data)
     loss_parallel = torch.mul(output, loss_weight).sum()
     loss_parallel.backward()
 
     set_random_seed(seed)
     embedding_vocab_parallel = layers.VocabParallelEmbedding(
-        vocab_size, hidden_size, init_method=init.normal_).to(mg_accelerator.device())
+        vocab_size, hidden_size, init_method=init.normal_).to(cur_platform.device())
     output = embedding_vocab_parallel(input_data)
     loss_vocab_parallel = torch.mul(output, loss_weight).sum()
     loss_vocab_parallel.backward()
@@ -189,10 +189,10 @@ def test_column_parallel_linear(tensor_model_parallel_size):
     batch_size = 7
 
     # Network
-    identity_layer = IdentityLayer2D(batch_size, input_size).to(mg_accelerator.device())
+    identity_layer = IdentityLayer2D(batch_size, input_size).to(cur_platform.device())
     linear_layer = mpu.ColumnParallelLinear(
-        input_size, output_size, keep_master_weight_for_test=True).to(mg_accelerator.device())
-    loss_weight = torch.randn([batch_size, output_size]).to(mg_accelerator.device())
+        input_size, output_size, keep_master_weight_for_test=True).to(cur_platform.device())
+    loss_weight = torch.randn([batch_size, output_size]).to(cur_platform.device())
     # Forward
     input_ = identity_layer()
     output = linear_layer(input_)
@@ -203,9 +203,9 @@ def test_column_parallel_linear(tensor_model_parallel_size):
     # Values.
     dLdY = loss_weight
     X = identity_layer.weight
-    A = linear_layer.master_weight.to(mg_accelerator.device())
+    A = linear_layer.master_weight.to(cur_platform.device())
     dLdA = torch.matmul(dLdY.t(), X)
-    dLdb = torch.matmul(torch.ones(batch_size, 1).to(mg_accelerator.device()).t(), dLdY).view(-1)
+    dLdb = torch.matmul(torch.ones(batch_size, 1).to(cur_platform.device()).t(), dLdY).view(-1)
     dLdX = torch.matmul(dLdY, A)
 
     rank = mpu.get_tensor_model_parallel_rank()
@@ -256,10 +256,10 @@ def test_row_parallel_linear(tensor_model_parallel_size):
     batch_size = 7
 
     # Network
-    identity_layer = IdentityLayer2D(batch_size, input_size).to(mg_accelerator.device())
+    identity_layer = IdentityLayer2D(batch_size, input_size).to(cur_platform.device())
     linear_layer = mpu.RowParallelLinear(
-        input_size, output_size, keep_master_weight_for_test=True).to(mg_accelerator.device())
-    loss_weight = torch.randn([batch_size, output_size]).to(mg_accelerator.device())
+        input_size, output_size, keep_master_weight_for_test=True).to(cur_platform.device())
+    loss_weight = torch.randn([batch_size, output_size]).to(cur_platform.device())
     # Forward
     input_ = identity_layer()
     output = linear_layer(input_)
@@ -270,9 +270,9 @@ def test_row_parallel_linear(tensor_model_parallel_size):
     # Values.
     dLdY = loss_weight
     X = identity_layer.weight
-    A = linear_layer.master_weight.to(mg_accelerator.device())
+    A = linear_layer.master_weight.to(cur_platform.device())
     dLdA = torch.matmul(dLdY.t(), X)
-    dLdb = torch.matmul(torch.ones(batch_size, 1).to(mg_accelerator.device()).t(), dLdY).view(-1)
+    dLdb = torch.matmul(torch.ones(batch_size, 1).to(cur_platform.device()).t(), dLdY).view(-1)
     dLdX = torch.matmul(dLdY, A)
 
     rank = mpu.get_tensor_model_parallel_rank()
@@ -329,11 +329,11 @@ def parallel_self_attention(tensor_model_parallel_size, num_att_heads_per_partit
 
     # Network
     identity_layer = IdentityLayer3D(batch_size, sequence_length,
-                                     hidden_size).to(mg_accelerator.device())
+                                     hidden_size).to(cur_platform.device())
     attention_layer = mpu.BertParallelSelfAttention(hidden_size, num_att_heads,
-                                                    dropout_prob).to(mg_accelerator.device())
-    loss_weight = torch.randn([batch_size, sequence_length, hidden_size]).to(mg_accelerator.device())
-    attention_mask = torch.randn([batch_size, 1, 1, sequence_length]).to(mg_accelerator.device())
+                                                    dropout_prob).to(cur_platform.device())
+    loss_weight = torch.randn([batch_size, sequence_length, hidden_size]).to(cur_platform.device())
+    attention_mask = torch.randn([batch_size, 1, 1, sequence_length]).to(cur_platform.device())
     # Forward
     input_ = identity_layer()
     output = attention_layer(input_, attention_mask)
@@ -415,13 +415,13 @@ def parallel_transformer(tensor_model_parallel_size, num_att_heads_per_partition
 
     # Network
     identity_layer = IdentityLayer3D(batch_size, sequence_length,
-                                     hidden_size).to(mg_accelerator.device())
+                                     hidden_size).to(cur_platform.device())
     transformer_layer = mpu.BertParallelTransformerLayer(
         hidden_size, intermediate_size, num_att_heads, 0.0, 0.0,
-        torch.nn.functional.relu, 1.0e-5).to(mg_accelerator.device())
+        torch.nn.functional.relu, 1.0e-5).to(cur_platform.device())
 
-    loss_weight = torch.randn([batch_size, sequence_length, hidden_size]).to(mg_accelerator.device())
-    attention_mask = torch.randn([batch_size, 1, 1, sequence_length]).to(mg_accelerator.device())
+    loss_weight = torch.randn([batch_size, sequence_length, hidden_size]).to(cur_platform.device())
+    attention_mask = torch.randn([batch_size, 1, 1, sequence_length]).to(cur_platform.device())
     # Forward
     input_ = identity_layer()
     output = transformer_layer(input_, attention_mask)
