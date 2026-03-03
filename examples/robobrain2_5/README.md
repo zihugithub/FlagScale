@@ -71,9 +71,9 @@ Change 2 fields:
 ### Run Inference
 
 ```sh
-flagscale run --config-path ./examples/robobrain2_5/conf --config-name inference --action run
+flagscale inference robobrain2_5 --config ./examples/robobrain2_5/conf/inference.yaml
 # or
-flagscale run -p ./examples/robobrain2_5/conf -n inference -a run
+flagscale inference robobrain2_5 -c ./examples/robobrain2_5/conf/inference.yaml
 ```
 
 ### Check Logs
@@ -100,9 +100,9 @@ Change 1 fields:
 
 ```sh
 cd FlagScale/
-flagscale run --config-path ./examples/robobrain2_5/conf --config-name serve --action run
+flagscale serve robobrain2_5 --config ./examples/robobrain2_5/conf/serve.yaml
 # or
-flagscale run -p ./examples/robobrain2_5/conf -n serve -a run
+flagscale serve robobrain2_5 -c ./examples/robobrain2_5/conf/serve.yaml
 ```
 
 ## Test Server with CURL

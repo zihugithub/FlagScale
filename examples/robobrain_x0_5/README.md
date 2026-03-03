@@ -106,9 +106,9 @@ Change 3 fields:
 ### Start Training
 ```sh
 cd FlagScale/
-flagscale run --config-path ./examples/robobrain_x0_5/conf --config-name train --action run
+flagscale train robobrain_x0_5 --config ./examples/robobrain_x0_5/conf/train.yaml
 # or
-flagscale run -p ./examples/robobrain_x0_5/conf -n train -a run
+flagscale train robobrain_x0_5 -c ./examples/robobrain_x0_5/conf/train.yaml
 ```
 
 
@@ -154,9 +154,9 @@ Change 2 fields:
 
 ```sh
 cd FlagScale/
-flagscale run --config-path ./examples/robobrain_x0_5/conf --config-name serve --action run
+flagscale serve robobrain_x0_5 --config ./examples/robobrain_x0_5/conf/serve.yaml
 # or
-flagscale run -p ./examples/robobrain_x0_5/conf -n serve -a run
+flagscale serve robobrain_x0_5 -c ./examples/robobrain_x0_5/conf/serve.yaml
 ```
 
 ### Test Server with Client

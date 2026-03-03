@@ -129,16 +129,14 @@ Require Megatron-LM-FL env
 
 3. Start the distributed training job:
     ```sh
-    flagscale run --config-path ./examples/qwen3/conf --config-name train --action run
+    flagscale train qwen3 --config ./examples/qwen3/conf/train.yaml
     # or
-    flagscale run -p ./examples/qwen3/conf -n train -a run
+    flagscale train qwen3 -c ./examples/qwen3/conf/train.yaml
     ```
 
 4. Stop the distributed training job:
     ```sh
-    flagscale run --config-path ./examples/qwen3/conf --config-name train --action stop
-    # or
-    flagscale run -p ./examples/qwen3/conf -n train -a stop
+    flagscale train qwen3 --stop
     ```
 
 
@@ -173,9 +171,9 @@ Require vLLM-FL env
 
 3. Start inference:
     ```sh
-    flagscale run --config-path ./examples/qwen3/conf --config-name inference_fl --action run
+    flagscale inference qwen3 --config ./examples/qwen3/conf/inference_fl.yaml
     # or
-    flagscale run -p ./examples/qwen3/conf -n inference_fl -a run
+    flagscale inference qwen3 -c ./examples/qwen3/conf/inference_fl.yaml
     ```
 
 ### Serve
@@ -220,16 +218,14 @@ Require vLLM-FL env
 
 3. Start the server:
     ```sh
-    flagscale run --config-path ./examples/qwen3/conf --config-name serve --action run
+    flagscale serve qwen3 --config ./examples/qwen3/conf/serve.yaml
     # or
-    flagscale run -p ./examples/qwen3/conf -n serve -a run
+    flagscale serve qwen3 -c ./examples/qwen3/conf/serve.yaml
     ```
 
 4. Stop the server:
     ```sh
-    flagscale run --config-path ./examples/qwen3/conf --config-name serve --action stop
-    # or
-    flagscale run -p ./examples/qwen3/conf -n serve -a stop
+    flagscale serve qwen3 --stop
     ```
 
 ### RL
@@ -282,17 +278,15 @@ Require verl-FL env
 
 4. Start rl:
     ```sh
-    flagscale run --config-path ./examples/qwen3/conf --config-name rl --action run
+    flagscale rl qwen3 --config ./examples/qwen3/conf/rl.yaml
     # or
-    flagscale run -p ./examples/qwen3/conf -n rl -a run
+    flagscale rl qwen3 -c ./examples/qwen3/conf/rl.yaml
     ```
 You can check the output in your experiment directory.
 
 5. Stop rl:
     ```sh
-    flagscale run --config-path ./examples/qwen3/conf --config-name rl --action stop
-    # or
-    flagscale run -p ./examples/qwen3/conf -n rl -a stop
+    flagscale rl qwen3 --stop
     ```
     or force to stop ray cluster.
     ```sh
