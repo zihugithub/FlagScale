@@ -1,4 +1,4 @@
-name: Build Docker Images (CUDA)
+name: Build Docker Images - CUDA
 
 on:
   # Manual trigger with configurable options
