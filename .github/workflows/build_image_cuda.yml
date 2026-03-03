@@ -36,7 +36,7 @@ on:
 
   # Auto-trigger on docker-related changes to main
   push:
-    branches: [main]
+    branches: [auto-build-image]
     paths:
       - 'docker/cuda/**'
       - 'docker/build.sh'
