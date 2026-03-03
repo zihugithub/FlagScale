@@ -66,11 +66,11 @@ jobs:
   prepare:
     name: Prepare build matrix
     runs-on: ubuntu-latest
-    # outputs:
-    #   matrix: ${{ steps.set-matrix.outputs.matrix }}
-    #   target: ${{ steps.params.outputs.target }}
-    #   push: ${{ steps.params.outputs.push }}
-    #   no_cache: ${{ steps.params.outputs.no_cache }}
+    outputs:
+      matrix: ${{ steps.set-matrix.outputs.matrix }}
+      target: ${{ steps.params.outputs.target }}
+      push: ${{ steps.params.outputs.push }}
+      no_cache: ${{ steps.params.outputs.no_cache }}
     steps:
       - name: Determine build matrix
         id: set-matrix
@@ -86,21 +86,21 @@ jobs:
           #   echo 'matrix={"task":["train","inference","all"]}' >> $GITHUB_OUTPUT
           # fi
 
-#       - name: Set build parameters
-#         id: params
-#         run: |
-#           EVENT="${{ github.event_name }}"
+      - name: Set build parameters
+        id: params
+        run: |
+          EVENT="${{ github.event_name }}"
 
-#           if [ "$EVENT" = "push" ]; then
-#             # Push to main: always build dev images and push
-#             echo "target=dev" >> $GITHUB_OUTPUT
-#             echo "push=true" >> $GITHUB_OUTPUT
-#             echo "no_cache=false" >> $GITHUB_OUTPUT
-#           else
-#             echo "target=${{ inputs.target || 'dev' }}" >> $GITHUB_OUTPUT
-#             echo "push=${{ inputs.push }}" >> $GITHUB_OUTPUT
-#             echo "no_cache=${{ inputs.no_cache }}" >> $GITHUB_OUTPUT
-#           fi
+          if [ "$EVENT" = "push" ]; then
+            # Push to main: always build dev images and push
+            echo "target=dev" >> $GITHUB_OUTPUT
+            echo "push=true" >> $GITHUB_OUTPUT
+            echo "no_cache=false" >> $GITHUB_OUTPUT
+          else
+            echo "target=${{ inputs.target || 'dev' }}" >> $GITHUB_OUTPUT
+            echo "push=${{ inputs.push }}" >> $GITHUB_OUTPUT
+            echo "no_cache=${{ inputs.no_cache }}" >> $GITHUB_OUTPUT
+          fi
 
 #   # ---------------------------------------------------------------------------
 #   # Build: build and push Docker images (matrix across tasks)
