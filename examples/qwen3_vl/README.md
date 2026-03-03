@@ -142,12 +142,16 @@ tokenizer_path: /mnt/qwen-vl-ckpts/Qwen3-VL-8B-Instruct
 
 Start training.
 ```bash
-python run.py --config-path ./examples/qwen3_vl/conf  --config-name train action=run
+flagscale run --config-path ./examples/qwen3_vl/conf --config-name train --action run
+# or
+flagscale run -p ./examples/qwen3_vl/conf -n train -a run
 ```
 
 Stop training.
 ```bash
-python run.py --config-path ./examples/qwen3_vl/conf  --config-name train action=stop
+flagscale run --config-path ./examples/qwen3_vl/conf --config-name train --action stop
+# or
+flagscale run -p ./examples/qwen3_vl/conf -n train -a stop
 ```
 
 ### 5. Convert the checkpoint to HuggingFace
@@ -177,7 +181,9 @@ More details about [Auto-Evaluation](https://github.com/flageval-baai/Auto-Evalu
     More details refer to this [doc](https://github.com/flagos-ai/FlagScale/tree/main/examples/robobrain2_5).
 
     ```sh
-    python run.py --config-path ./examples/robobrain2_5/conf --config-name serve action=run
+    flagscale run --config-path ./examples/robobrain2_5/conf --config-name serve --action run
+    # or
+    flagscale run -p ./examples/robobrain2_5/conf -n serve -a run
     ```
 
 ### 2. Start evaluation

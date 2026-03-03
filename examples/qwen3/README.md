@@ -98,7 +98,9 @@ Start server with FlagScale:
 
 ```sh
 cd FlagScale
-python run.py --config-path ./examples/qwen3/conf --config-name serve action=run
+flagscale run --config-path ./examples/qwen3/conf --config-name serve --action run
+# or
+flagscale run -p ./examples/qwen3/conf -n serve -a run
 ```
 
 Check logs:

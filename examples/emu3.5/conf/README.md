@@ -77,11 +77,15 @@ generate:
 entrypoint: `./flagscale/inference/inference_emu3p5.py`
 
 ```bash
-python run.py --config-path examples/emu3.5/conf/ --config-name image_generation.yaml
+flagscale run --config-path examples/emu3.5/conf/ --config-name image_generation --action run
+# or
+flagscale run -p examples/emu3.5/conf/ -n image_generation -a run
 ```
 
 ```bash
-python run.py --config-path examples/emu3.5/conf/ --config-name interleaved_generation.yaml
+flagscale run --config-path examples/emu3.5/conf/ --config-name interleaved_generation --action run
+# or
+flagscale run -p examples/emu3.5/conf/ -n interleaved_generation -a run
 ```
 
 ## Online Serve
@@ -104,7 +108,9 @@ Note:  You can also directly run command `python emu3p5.py`, with setting the en
 
 ```bash
 # Start emu3.5 serve
-python run.py --config-path examples/emu3.5/conf/ --config-name serve_emu3p5 action=run
+flagscale run --config-path examples/emu3.5/conf/ --config-name serve_emu3p5 --action run
+# or
+flagscale run -p examples/emu3.5/conf/ -n serve_emu3p5 -a run
 ```
 
 ```bash
@@ -114,7 +120,9 @@ python client.py
 
 ```bash
 # Stop emu3.5 serve
-python run.py --config-path examples/emu3.5/conf/ --config-name serve_emu3p5 action=stop
+flagscale run --config-path examples/emu3.5/conf/ --config-name serve_emu3p5 --action stop
+# or
+flagscale run -p examples/emu3.5/conf/ -n serve_emu3p5 -a stop
 ```
 
 ```python

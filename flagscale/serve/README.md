@@ -27,7 +27,9 @@ modelscope download --model Qwen/Qwen2.5-7B-Instruct --local_dir /models/
 
 ```shell
 cd FlagScale
-python run.py --config-path ./examples/qwen/conf --config-name config_qwen2.5_7b action=run
+flagscale run --config-path ./examples/qwen/conf --config-name config_qwen2.5_7b --action run
+# or
+flagscale run -p ./examples/qwen/conf -n config_qwen2.5_7b -a run
 ```
 
 ## Serve call
@@ -46,7 +48,9 @@ curl http://127.0.0.1:4567/v1/chat/completions -H "Content-Type: application/jso
 
 ```shell
 cd FlagScale
-python run.py --config-path ./examples/qwen/conf --config-name config_qwen2.5_7b action=stop
+flagscale run --config-path ./examples/qwen/conf --config-name config_qwen2.5_7b --action stop
+# or
+flagscale run -p ./examples/qwen/conf -n config_qwen2.5_7b -a stop
 ```
 
 ## logs

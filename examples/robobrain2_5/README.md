@@ -71,7 +71,9 @@ Change 2 fields:
 ### Run Inference
 
 ```sh
-python run.py --config-path ./examples/robobrain2_5/conf --config-name inference action=run
+flagscale run --config-path ./examples/robobrain2_5/conf --config-name inference --action run
+# or
+flagscale run -p ./examples/robobrain2_5/conf -n inference -a run
 ```
 
 ### Check Logs
@@ -98,7 +100,9 @@ Change 1 fields:
 
 ```sh
 cd FlagScale/
-python run.py --config-path ./examples/robobrain2_5/conf --config-name serve action=run
+flagscale run --config-path ./examples/robobrain2_5/conf --config-name serve --action run
+# or
+flagscale run -p ./examples/robobrain2_5/conf -n serve -a run
 ```
 
 ## Test Server with CURL

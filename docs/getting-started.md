@@ -129,12 +129,16 @@ Require Megatron-LM-FL env
 
 3. Start the distributed training job:
     ```sh
-    python run.py --config-path ./examples/qwen3/conf --config-name train action=run
+    flagscale run --config-path ./examples/qwen3/conf --config-name train --action run
+    # or
+    flagscale run -p ./examples/qwen3/conf -n train -a run
     ```
 
 4. Stop the distributed training job:
     ```sh
-    python run.py --config-path ./examples/qwen3/conf --config-name train action=stop
+    flagscale run --config-path ./examples/qwen3/conf --config-name train --action stop
+    # or
+    flagscale run -p ./examples/qwen3/conf -n train -a stop
     ```
 
 
@@ -169,7 +173,9 @@ Require vLLM-FL env
 
 3. Start inference:
     ```sh
-    python run.py --config-path ./examples/qwen3/conf --config-name inference_fl action=run
+    flagscale run --config-path ./examples/qwen3/conf --config-name inference_fl --action run
+    # or
+    flagscale run -p ./examples/qwen3/conf -n inference_fl -a run
     ```
 
 ### Serve
@@ -214,12 +220,16 @@ Require vLLM-FL env
 
 3. Start the server:
     ```sh
-    python run.py --config-path ./examples/qwen3/conf --config-name serve action=run
+    flagscale run --config-path ./examples/qwen3/conf --config-name serve --action run
+    # or
+    flagscale run -p ./examples/qwen3/conf -n serve -a run
     ```
 
 4. Stop the server:
     ```sh
-    python run.py --config-path ./examples/qwen3/conf --config-name serve action=stop
+    flagscale run --config-path ./examples/qwen3/conf --config-name serve --action stop
+    # or
+    flagscale run -p ./examples/qwen3/conf -n serve -a stop
     ```
 
 ### RL
@@ -272,13 +282,17 @@ Require verl-FL env
 
 4. Start rl:
     ```sh
-    python run.py --config-path ./examples/qwen3/conf --config-name rl action=run
+    flagscale run --config-path ./examples/qwen3/conf --config-name rl --action run
+    # or
+    flagscale run -p ./examples/qwen3/conf -n rl -a run
     ```
 You can check the output in your experiment directory.
 
 5. Stop rl:
     ```sh
-    python run.py --config-path ./examples/qwen3/conf --config-name rl action=stop
+    flagscale run --config-path ./examples/qwen3/conf --config-name rl --action stop
+    # or
+    flagscale run -p ./examples/qwen3/conf -n rl -a stop
     ```
     or force to stop ray cluster.
     ```sh

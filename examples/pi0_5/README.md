@@ -188,7 +188,9 @@ Configure the following fields:
 ### Start Training
 ```sh
 cd FlagScale/
-python run.py --config-path ./examples/pi0_5/conf --config-name train action=run
+flagscale run --config-path ./examples/pi0_5/conf --config-name train --action run
+# or
+flagscale run -p ./examples/pi0_5/conf -n train -a run
 ```
 
 Training logs are saved to `outputs/pi0_5_train/logs/host_0_localhost.output` by default.
@@ -198,7 +200,9 @@ Checkpoints are saved to `${experiment.exp_dir}/checkpoints` (default: `outputs/
 ### Stop Training
 ```sh
 cd FlagScale/
-python run.py --config-path ./examples/pi0_5/conf --config-name train action=stop
+flagscale run --config-path ./examples/pi0_5/conf --config-name train --action stop
+# or
+flagscale run -p ./examples/pi0_5/conf -n train -a stop
 ```
 
 ## Inference
@@ -279,10 +283,9 @@ Configure the following fields:
 
 ```sh
 cd FlagScale/
-python run.py \
-    --config-path ./examples/pi0_5/conf \
-    --config-name inference \
-    action=run
+flagscale run --config-path ./examples/pi0_5/conf --config-name inference --action run
+# or
+flagscale run -p ./examples/pi0_5/conf -n inference -a run
 ```
 
 Inference logs are saved to `outputs/pi0_5_inference/inference_logs/host_0_localhost.output` by default.
@@ -323,7 +326,9 @@ Configure the following fields:
 
 ```sh
 cd FlagScale/
-python run.py --config-path ./examples/pi0_5/conf --config-name serve action=run
+flagscale run --config-path ./examples/pi0_5/conf --config-name serve --action run
+# or
+flagscale run -p ./examples/pi0_5/conf -n serve -a run
 ```
 
 Serving logs are saved to `outputs/pi0_5_serve/logs/host_0_localhost.output` by default.
@@ -332,7 +337,9 @@ Serving logs are saved to `outputs/pi0_5_serve/logs/host_0_localhost.output` by 
 
 ```sh
 cd FlagScale/
-python run.py --config-path ./examples/pi0_5/conf --config-name serve action=stop
+flagscale run --config-path ./examples/pi0_5/conf --config-name serve --action stop
+# or
+flagscale run -p ./examples/pi0_5/conf -n serve -a stop
 ```
 
 ### Test Server with Client

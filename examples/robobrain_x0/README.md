@@ -119,7 +119,9 @@ Change 2 fields:
 ### Start Training
 ```sh
 cd FlagScale/
-python run.py --config-path ./examples/robobrain_x0/conf/ --config-name train action=run
+flagscale run --config-path ./examples/robobrain_x0/conf/ --config-name train --action run
+# or
+flagscale run -p ./examples/robobrain_x0/conf/ -n train -a run
 ```
 
 ## Training with Lerobot Dataset
@@ -217,7 +219,9 @@ defaults:
 
 ```sh
 cd FlagScale/
-python run.py --config-path ./examples/robobrain_x0/conf/ --config-name train action=run
+flagscale run --config-path ./examples/robobrain_x0/conf/ --config-name train --action run
+# or
+flagscale run -p ./examples/robobrain_x0/conf/ -n train -a run
 ```
 
 ### Supported Video Backends
@@ -255,7 +259,9 @@ Change 3 fields:
 
 ```sh
 cd FlagScale/
-python run.py --config-path ./examples/robobrain_x0/conf --config-name serve action=run
+flagscale run --config-path ./examples/robobrain_x0/conf --config-name serve --action run
+# or
+flagscale run -p ./examples/robobrain_x0/conf -n serve -a run
 ```
 
 ### Test Server with Client
