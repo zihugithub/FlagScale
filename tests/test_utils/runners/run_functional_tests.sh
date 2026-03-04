@@ -90,10 +90,17 @@ run_test() {
         rm -rf "$exp_dir"/* 2>/dev/null || true
     fi
 
+    # Map task name to flagscale CLI subcommand
+    # e.g. hetero_train -> train, train -> train, others unchanged
+    local cli_task="$task"
+    case "$task" in
+        *train*) cli_task="train" ;;
+    esac
+
     # Run test via flagscale CLI
     # --config expects the full YAML path
-    log_info "Running: flagscale $task $model --config $config_file --test"
-    flagscale "$task" "$model" --config "$config_file" --test || return 1
+    log_info "Running: flagscale $cli_task $model --config $config_file --test"
+    flagscale "$cli_task" "$model" --config "$config_file" --test || return 1
 
     # Match the corresponding comparison function according to task type
     # Matching rules:
