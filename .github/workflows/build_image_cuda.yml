@@ -101,25 +101,25 @@ jobs:
             echo "no_cache=${{ inputs.no_cache }}" >> $GITHUB_OUTPUT
           fi
 
-#   # ---------------------------------------------------------------------------
-#   # Build: build and push Docker images (matrix across tasks)
-#   # ---------------------------------------------------------------------------
-#   build:
-#     name: Build ${{ matrix.task }}
-#     needs: prepare
-#     runs-on: [self-hosted, Linux, X64]
-#     strategy:
-#       fail-fast: false
-#       matrix: ${{ fromJson(needs.prepare.outputs.matrix) }}
-#     steps:
-#       - name: Checkout code
-#         uses: actions/checkout@v4
+  # ---------------------------------------------------------------------------
+  # Build: build and push Docker images (matrix across tasks)
+  # ---------------------------------------------------------------------------
+  build:
+    name: Build ${{ matrix.task }}
+    needs: prepare
+    runs-on: [self-hosted, Linux, X64]
+    strategy:
+      fail-fast: false
+      matrix: ${{ fromJson(needs.prepare.outputs.matrix) }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
 
-#       - name: Set up Docker Buildx
-#         uses: docker/setup-buildx-action@v3
-#         with:
-#           # network=host allows buildx to reach localhost:5000 registry
-#           driver-opts: network=host
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+        with:
+          # network=host allows buildx to reach localhost:5000 registry
+          driver-opts: network=host
 
 #       - name: Check remote registry secrets
 #         id: registry
