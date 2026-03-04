@@ -263,14 +263,6 @@ main() {
         run_phase task "$SCRIPT_DIR/$PLATFORM/install_${TASK}.sh"
     fi
 
-    # Install FlagScale CLI
-    print_header "FlagScale CLI"
-    log_info "Installing FlagScale CLI..."
-    pushd "$PROJECT_ROOT" > /dev/null || die "Failed to cd to project root"
-    pip install . --verbose --no-build-isolation --root-user-action=ignore || die "FlagScale CLI install failed"
-    popd > /dev/null
-    log_success "FlagScale CLI installed"
-
     print_header "Installation Complete"
 }
 
