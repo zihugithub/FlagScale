@@ -849,7 +849,7 @@ def pretrain(
     if "cpu:gloo" == torch.distributed.get_backend():
         start_time_tensor = torch.tensor([_TRAIN_START_TIME], dtype=torch.double, device='cpu')
     else:
-        start_time_tensor = torch.tensor([_TRAIN_START_TIME], dtype=torch.double, device='cuda')
+        start_time_tensor = torch.tensor([_TRAIN_START_TIME], dtype=torch.double, device=cur_platform.device_name())
     ########## FlagScale Begin ##########
     torch.distributed.all_reduce(start_time_tensor, op=torch.distributed.ReduceOp.MIN)
     _TRAIN_START_TIME = start_time_tensor.item()
@@ -1255,7 +1255,7 @@ def get_model(model_provider_func, model_type=ModelType.encoder_or_decoder, wrap
     # Materialize tensors on meta device (GPU allocation) if not using FSDP2.
     if args.init_model_with_meta_device and not args.use_torch_fsdp2:
         #for model_module in model:
-        model = [to_empty_if_meta_device(model_module, device=torch.device("cuda")) for model_module in model]
+        model = [to_empty_if_meta_device(model_module, device=torch.device(cur_platform.device_name())) for model_module in model]
 
 
 
@@ -1617,7 +1617,7 @@ def train_step(forward_step_func, data_iterator, model, optimizer, opt_param_sch
         spiky_loss_detector = get_spiky_loss_detector()
         loss_ = spiky_loss_detector.reduce_losses(losses_reduced)
         is_spiky_loss = spiky_loss_detector.is_spkiy_loss(loss_)
-        is_spiky_loss_tensor = torch.tensor(is_spiky_loss, dtype=torch.int, device="cuda")
+        is_spiky_loss_tensor = torch.tensor(is_spiky_loss, dtype=torch.int, device=cur_platform.device_name())
         torch.distributed.all_reduce(is_spiky_loss_tensor, op=torch.distributed.ReduceOp.MAX)
         is_spiky_loss = is_spiky_loss_tensor.item()
         if is_spiky_loss > 0:
@@ -1750,7 +1750,7 @@ def training_log(
     for key in loss_dict:
         if not skipped_iter:
             total_loss_dict[key] = (
-                total_loss_dict.get(key, torch.tensor([0.0], dtype=torch.float, device='cuda'))
+                total_loss_dict.get(key, torch.tensor([0.0], dtype=torch.float, device=cur_platform.device_name()))
                 + loss_dict[key]
             )
         else:
@@ -1996,7 +1996,7 @@ def training_log(
                 )
                 if avg > 0.0:
                     log_string += ' {}: {:.6E} |'.format(key, avg)
-                total_loss_dict[key] = torch.tensor([0.0], dtype=torch.float, device='cuda')
+                total_loss_dict[key] = torch.tensor([0.0], dtype=torch.float, device=cur_platform.device_name())
         log_string += f' loss scale: {loss_scale:.1f} |'
         if grad_norm is not None:
             log_string += f' grad norm: {grad_norm:.3f} |'
@@ -2262,7 +2262,7 @@ def checkpoint_and_decide_exit(
     if args.exit_duration_in_mins:
         train_time = (time.time() - _TRAIN_START_TIME) / 60.0
         done_cuda = torch.tensor(
-            [train_time > args.exit_duration_in_mins], dtype=torch.int, device='cuda'
+            [train_time > args.exit_duration_in_mins], dtype=torch.int, device=cur_platform.device_name()
         )
         torch.distributed.all_reduce(done_cuda, op=torch.distributed.ReduceOp.MAX)
         done = done_cuda.item()
@@ -3120,9 +3120,9 @@ def evaluate_and_print_results(
 
         # with full validation we need to distribute eval_iters to all ranks
         if mpu.get_tensor_model_parallel_rank() == 0:
-            eval_iters = torch.tensor(args.eval_iters, dtype=torch.long, device='cuda')
+            eval_iters = torch.tensor(args.eval_iters, dtype=torch.long, device=cur_platform.device_name())
         else:
-            eval_iters = torch.tensor([0] * len(eval_iters), dtype=torch.long, device='cuda')
+            eval_iters = torch.tensor([0] * len(eval_iters), dtype=torch.long, device=cur_platform.device_name())
         torch.distributed.broadcast(eval_iters, 0)
         eval_iters = eval_iters.tolist()
         args.eval_iters = eval_iters[0] if not args.multiple_validation_sets else eval_iters
@@ -3271,10 +3271,10 @@ def build_train_valid_test_data_loaders(build_train_valid_test_datasets_provider
         do_valid = valid_dataloaders is not None and (args.full_validation or args.eval_iters > 0)
         do_test = test_dataloader is not None and (args.full_validation or args.eval_iters > 0)
         flags = torch.tensor(
-            [int(do_train), int(do_valid), int(do_test)], dtype=torch.long, device='cuda'
+            [int(do_train), int(do_valid), int(do_test)], dtype=torch.long, device=cur_platform.device_name()
         )
     else:
-        flags = torch.tensor([0, 0, 0], dtype=torch.long, device='cuda')
+        flags = torch.tensor([0, 0, 0], dtype=torch.long, device=cur_platform.device_name())
 
     torch.distributed.broadcast(flags, 0)
 

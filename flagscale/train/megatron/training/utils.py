@@ -128,7 +128,7 @@ def calc_params_l2_norm(model, force_create_fp32_copy=False):
     # accumulated across the DP group since the main parameters are sharded because
     # of distributed optimizer.
     if len(sharded_params_data) > 0:
-        dummy_overflow_buf = torch.tensor([0], dtype=torch.int, device='cuda')
+        dummy_overflow_buf = torch.tensor([0], dtype=torch.int, device=cur_platform.device_name())
         sharded_norm, _ = multi_tensor_applier(
             multi_tensor_l2norm,
             dummy_overflow_buf,
@@ -137,7 +137,7 @@ def calc_params_l2_norm(model, force_create_fp32_copy=False):
         )
         sharded_norm_2 = sharded_norm * sharded_norm
     else:
-        sharded_norm_2 = torch.zeros((1,), dtype=torch.float32, device='cuda')
+        sharded_norm_2 = torch.zeros((1,), dtype=torch.float32, device=cur_platform.device_name())
     # Sum over all DP groups, including CP since distributed optimizer state is
     # sharded jointly over DP+CP.
     torch.distributed.all_reduce(

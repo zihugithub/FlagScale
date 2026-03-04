@@ -354,7 +354,7 @@ def _initialize_distributed(get_embedding_ranks, get_position_embedding_ranks, s
         # Manually set the device ids.
         if device_count > 0:
             cur_platform.set_device(args.local_rank)
-            device_id = torch.device(f'cuda:{args.local_rank}')
+            device_id = torch.device(cur_platform.current_device_name())
         else:
             device_id = None
 
@@ -511,7 +511,7 @@ def _warmup_jit_function():
 
     # Warmup fused bias+gelu
     bias = torch.rand(
-        args.ffn_hidden_size // args.tensor_model_parallel_size, dtype=dtype, device="cuda"
+        args.ffn_hidden_size // args.tensor_model_parallel_size, dtype=dtype, device=cur_platform.device_name()
     )
     input = torch.rand(
         (
@@ -520,7 +520,7 @@ def _warmup_jit_function():
             args.ffn_hidden_size // args.tensor_model_parallel_size,
         ),
         dtype=dtype,
-        device="cuda",
+        device=cur_platform.device_name(),
     )
     # Warmup JIT fusions with the input grad_enable state of both forward
     # prop and recomputation
@@ -541,14 +541,14 @@ def _warmup_jit_function():
     input = torch.rand(
         (seq_length // args.context_parallel_size, args.micro_batch_size, args.hidden_size),
         dtype=dtype,
-        device="cuda",
+        device=cur_platform.device_name(),
     )
     residual = torch.rand(
         (seq_length // args.context_parallel_size, args.micro_batch_size, args.hidden_size),
         dtype=dtype,
-        device="cuda",
+        device=cur_platform.device_name(),
     )
-    bias = torch.rand((args.hidden_size), dtype=dtype, device="cuda").expand_as(residual)
+    bias = torch.rand((args.hidden_size), dtype=dtype, device=cur_platform.device_name()).expand_as(residual)
     dropout_rate = 0.1
     # Warmup JIT fusions with the input grad_enable state of both forward
     # prop and recomputation
