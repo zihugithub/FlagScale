@@ -122,8 +122,8 @@ jobs:
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
         with:
-          # network=host allows buildx to reach localhost:5000 registry
-          driver-opts: network=host
+          # Use docker driver to avoid pulling moby/buildkit from Docker Hub
+          driver: docker
 
       # - name: Check remote registry secrets
       #   id: registry
@@ -202,13 +202,13 @@ jobs:
             echo "| Local Tag | \`${LOCAL_TAG}\` |"
           } >> $GITHUB_STEP_SUMMARY
 
-      - name: Build and push Docker image
+      - name: Build Docker image
         uses: docker/build-push-action@v6
         with:
           context: .
           file: docker/cuda/Dockerfile.${{ matrix.task }}
           target: ${{ needs.prepare.outputs.target }}
-          push: ${{ needs.prepare.outputs.push == 'true' }}
+          load: true
           tags: ${{ steps.meta.outputs.tags }}
           build-args: |
             BASE_IMAGE=${{ steps.meta.outputs.base_image }}
@@ -218,6 +218,10 @@ jobs:
             UV_VERSION=${{ env.UV_VERSION }}
             PYTORCH_INDEX=${{ steps.meta.outputs.pytorch_index }}
           no-cache: ${{ needs.prepare.outputs.no_cache == 'true' }}
+
+      - name: Push Docker image
+        if: needs.prepare.outputs.push == 'true'
+        run: docker push ${{ steps.meta.outputs.local_tag }}
 
       - name: Export image tag for config update
         id: export
