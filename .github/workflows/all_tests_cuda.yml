@@ -2,9 +2,13 @@ name: cuda_tests
 
 on:
   push:
-    branches: ["main"]
+    branches: [auto-build-image]
   pull_request:
     branches: ["main"]
+  # Auto-trigger after build_image_cuda completes successfully
+  workflow_run:
+    workflows: ["Build Docker Images - CUDA"]
+    types: [completed]
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}-${{ github.actor }}
@@ -12,6 +16,8 @@ concurrency:
 
 jobs:
   run_tests:
+    # Skip if triggered by a failed build workflow
+    if: github.event_name != 'workflow_run' || github.event.workflow_run.conclusion == 'success'
     # Package manager and environment settings are read from .github/configs/cuda.yml
     uses: ./.github/workflows/all_tests_common.yml
     with:

@@ -43,6 +43,15 @@ on:
     #   - 'tools/install/**'
     #   - 'requirements/**'
 
+  # Trigger on PRs that modify docker-related files
+  pull_request:
+    branches: [main]
+    paths:
+      - 'docker/cuda/**'
+      - 'docker/build.sh'
+      - 'tools/install/**'
+      - 'requirements/**'
+
 concurrency:
   group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
   cancel-in-progress: true
@@ -50,9 +59,6 @@ concurrency:
 env:
   # Local registry used by CI runners (see .github/configs/cuda.yml)
   REGISTRY: localhost:5000
-  # # Remote registry for distribution (used when secrets are available)
-  # REMOTE_REGISTRY: harbor.baai.ac.cn
-  # REMOTE_IMAGE_PREFIX: flagscale
   # Default build versions (keep in sync with docker/build.sh)
   CUDA_VERSION: '12.8.1'
   UBUNTU_VERSION: '22.04'
@@ -125,23 +131,6 @@ jobs:
           # Use docker driver to avoid pulling moby/buildkit from Docker Hub
           driver: docker
 
-      # - name: Check remote registry secrets
-      #   id: registry
-      #   run: |
-      #     if [ -n "${{ secrets.REGISTRY_USERNAME }}" ]; then
-      #       echo "remote_enabled=true" >> $GITHUB_OUTPUT
-      #     else
-      #       echo "remote_enabled=false" >> $GITHUB_OUTPUT
-      #     fi
-
-      # - name: Login to remote registry
-      #   if: steps.registry.outputs.remote_enabled == 'true' && needs.prepare.outputs.push == 'true'
-      #   uses: docker/login-action@v3
-      #   with:
-      #     registry: ${{ env.REMOTE_REGISTRY }}
-      #     username: ${{ secrets.REGISTRY_USERNAME }}
-      #     password: ${{ secrets.CONTAINER_REGISTRY }}
-
       - name: Compute build metadata
         id: meta
         run: |
@@ -164,9 +153,6 @@ jobs:
 
           # Local registry tag (for CI runners)
           LOCAL_TAG="${{ env.REGISTRY }}/${IMAGE_NAME}:${TAG}"
-
-          # # Remote registry tag (for distribution)
-          # REMOTE_TAG="${{ env.REMOTE_REGISTRY }}/${{ env.REMOTE_IMAGE_PREFIX }}/${IMAGE_NAME}:${TAG}"
 
           # Derived build arguments
           BASE_IMAGE="nvidia/cuda:${CUDA_VERSION}-devel-ubuntu${UBUNTU_VERSION}"
@@ -237,12 +223,9 @@ jobs:
           echo "**Result:** Built successfully" >> $GITHUB_STEP_SUMMARY
           echo "**Pushed:** ${{ needs.prepare.outputs.push }}" >> $GITHUB_STEP_SUMMARY
 
-      - name: Clean up old Docker build cache
-        if: always()
-        run: docker builder prune -f --filter "until=168h" 2>/dev/null || true
-
   # ---------------------------------------------------------------------------
-  # Update Config: update cuda.yml with new image tags
+  # Update Config: update cuda.yml with localhost tags (temporary, for test validation)
+  # After tests pass, push_image_harbor.yml will promote to Harbor and update to final tags
   # ---------------------------------------------------------------------------
   update-config:
     name: Update CI config
