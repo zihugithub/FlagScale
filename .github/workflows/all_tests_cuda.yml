@@ -2,7 +2,7 @@ name: cuda_tests
 
 on:
   push:
-    branches: ["main"]
+    branches: ["cli-validation-function"]
   pull_request:
     branches: ["main"]
 
