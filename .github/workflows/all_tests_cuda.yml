@@ -5,7 +5,7 @@ on:
     branches: ["main"]
   pull_request:
     branches: ["main"]
-  # Auto-trigger after build_image_cuda completes successfully
+  # Auto-trigger after build_image_cuda completes (for non-PR builds like manual/push)
   workflow_run:
     workflows: ["Build Docker Images - CUDA"]
     types: [completed]
@@ -15,21 +15,143 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  # ---------------------------------------------------------------------------
+  # Gate: detect if this PR involves Docker image building and wait if needed
+  # - pull_request + docker files changed → wait for build_image_cuda to finish
+  # - pull_request + no docker files      → run tests immediately
+  # - push                                → run tests immediately
+  # - workflow_run (non-PR build)          → run tests if build succeeded
+  # - workflow_run (PR-triggered build)    → skip (PR trigger handles it)
+  # ---------------------------------------------------------------------------
+  wait_for_image_build:
+    name: Check image build dependency
+    runs-on: ubuntu-latest
+    # Skip workflow_run events from PR-triggered builds (PR trigger handles the wait)
+    if: >-
+      !(github.event_name == 'workflow_run' && github.event.workflow_run.event == 'pull_request')
+    outputs:
+      should_test: ${{ steps.check.outputs.should_test }}
+    steps:
+      - name: Checkout code
+        if: github.event_name == 'pull_request'
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Check and wait for image build if needed
+        id: check
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          EVENT="${{ github.event_name }}"
+
+          # push to main: always run tests immediately
+          if [ "$EVENT" = "push" ]; then
+            echo "Push event — running tests immediately"
+            echo "should_test=true" >> $GITHUB_OUTPUT
+            exit 0
+          fi
+
+          # workflow_run (non-PR): run only if build succeeded
+          if [ "$EVENT" = "workflow_run" ]; then
+            if [ "${{ github.event.workflow_run.conclusion }}" = "success" ]; then
+              echo "Build workflow succeeded — running tests"
+              echo "should_test=true" >> $GITHUB_OUTPUT
+            else
+              echo "Build workflow did not succeed — skipping tests"
+              echo "should_test=false" >> $GITHUB_OUTPUT
+            fi
+            exit 0
+          fi
+
+          # pull_request: check if docker-related files changed
+          CHANGED=$(git diff --name-only ${{ github.event.pull_request.base.sha }}...${{ github.sha }} | \
+            grep -E '^(docker/cuda/|docker/build\.sh$|tools/install/|requirements/)' || true)
+
+          if [ -z "$CHANGED" ]; then
+            echo "No docker-related changes — running tests immediately"
+            echo "should_test=true" >> $GITHUB_OUTPUT
+            exit 0
+          fi
+
+          echo "Docker-related files changed in this PR:"
+          echo "$CHANGED"
+          echo ""
+          echo "Waiting for image build workflow to complete before testing..."
+
+          HEAD_SHA="${{ github.event.pull_request.head.sha }}"
+          POLL_INTERVAL=60          # seconds between each poll
+          NOT_FOUND_MAX=15          # give up if build not found after 15 min
+          NOT_FOUND_COUNT=0
+          ATTEMPT=0
+
+          while true; do
+            ATTEMPT=$((ATTEMPT + 1))
+
+            RUN_INFO=$(gh run list \
+              --workflow=build_image_cuda.yml \
+              --commit="$HEAD_SHA" \
+              --json status,conclusion \
+              --jq '.[0]' 2>/dev/null || echo '{}')
+
+            STATUS=$(echo "$RUN_INFO" | jq -r '.status // "not_found"')
+            CONCLUSION=$(echo "$RUN_INFO" | jq -r '.conclusion // "none"')
+
+            if [ "$STATUS" = "completed" ]; then
+              if [ "$CONCLUSION" = "success" ]; then
+                echo "✅ Image build completed successfully (waited $ATTEMPT min)"
+                echo "should_test=true" >> $GITHUB_OUTPUT
+                exit 0
+              elif [ "$CONCLUSION" = "cancelled" ]; then
+                echo "⛔ Image build was cancelled — aborting tests"
+                echo "should_test=false" >> $GITHUB_OUTPUT
+                exit 1
+              else
+                echo "❌ Image build failed (conclusion: $CONCLUSION) — aborting tests"
+                echo "should_test=false" >> $GITHUB_OUTPUT
+                exit 1
+              fi
+            fi
+
+            # Build is running — keep waiting with no upper limit
+            if [ "$STATUS" = "in_progress" ] || [ "$STATUS" = "queued" ]; then
+              NOT_FOUND_COUNT=0
+              echo "Build status: $STATUS — waiting ${POLL_INTERVAL}s (attempt $ATTEMPT)"
+            else
+              # Build not found yet — allow a grace period for it to appear
+              NOT_FOUND_COUNT=$((NOT_FOUND_COUNT + 1))
+              if [ "$NOT_FOUND_COUNT" -ge "$NOT_FOUND_MAX" ]; then
+                echo "⏰ Build workflow not found after ${NOT_FOUND_MAX} min, giving up"
+                echo "should_test=false" >> $GITHUB_OUTPUT
+                exit 1
+              fi
+              echo "Build not found yet — waiting ${POLL_INTERVAL}s ($NOT_FOUND_COUNT/$NOT_FOUND_MAX)"
+            fi
+
+            sleep $POLL_INTERVAL
+          done
+
   run_tests:
-    # Skip if triggered by a failed build workflow
-    if: github.event_name != 'workflow_run' || github.event.workflow_run.conclusion == 'success'
+    needs: [wait_for_image_build]
+    if: always() && needs.wait_for_image_build.outputs.should_test == 'true'
     # Package manager and environment settings are read from .github/configs/cuda.yml
     uses: ./.github/workflows/all_tests_common.yml
     with:
       platform: cuda
 
   all_tests:
-    needs: run_tests
+    needs: [wait_for_image_build, run_tests]
     runs-on: ubuntu-latest
     if: always()
     steps:
       - name: Verify workflow status
         run: |
+          # If this run was skipped (workflow_run from a PR-triggered build), exit gracefully
+          if [ "${{ needs.wait_for_image_build.result }}" = "skipped" ]; then
+            echo "⏭️ Skipped — PR-triggered tests handle this build"
+            exit 0
+          fi
+
           if [ "${{ needs.run_tests.result }}" != "success" ]; then
             echo "❌ Tests workflow failed"
             exit 1
