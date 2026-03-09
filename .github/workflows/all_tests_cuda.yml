@@ -2,7 +2,7 @@ name: cuda_tests
 
 on:
   push:
-    branches: ["main"]
+    branches: ["auto-build-image"]
   pull_request:
     branches: ["main"]
   # Auto-trigger after build_image_cuda completes (for non-PR builds like manual/push)
