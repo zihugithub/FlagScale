@@ -9,7 +9,6 @@ on:
   workflow_run:
     workflows: ["Build Docker Images - CUDA"]
     types: [completed]
-    branches: [main, auto-build-image]
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}-${{ github.actor }}
