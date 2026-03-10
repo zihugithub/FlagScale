@@ -287,7 +287,7 @@ jobs:
     steps:
       - name: Verify build results
         run: |
-          if [ "${{ needs.build.result }}" != "success" ]; then
+          if [ "${{ needs.update-config.result }}" != "success" ]; then
             echo "::error::One or more image builds failed"
             exit 1
           fi
