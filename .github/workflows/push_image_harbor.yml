@@ -51,6 +51,12 @@ jobs:
             core.info('Both workflows succeeded, proceeding with image promotion.');
             core.setOutput('ready', 'true');
 
+      - name: Abort if not ready
+        if: steps.verify.outputs.ready != 'true'
+        run: |
+          echo "Not all required workflows have succeeded yet. Exiting."
+          exit 1
+
       - name: Checkout code
         uses: actions/checkout@v4
         with:
