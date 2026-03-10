@@ -32,15 +32,14 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          if [ "${{ github.event_name }}" = "push" ]; then
-            HEAD_SHA="${{ github.sha }}"
-          else
-            HEAD_SHA="${{ github.event.pull_request.head.sha }}"
-          fi
+          # Always use github.sha — for push events it's the pushed commit;
+          # for pull_request events it's the merge commit, which matches the
+          # head_sha recorded by GitHub on the build workflow run.
+          HEAD_SHA="${{ github.sha }}"
 
           # ── Phase 1: detect whether the build workflow was triggered ──
           DETECT_INTERVAL=30
-          DETECT_MAX=4   # up to ~2 minutes
+          DETECT_MAX=8   # up to ~4 minutes
 
           BUILD_FOUND=false
           for i in $(seq 1 $DETECT_MAX); do
