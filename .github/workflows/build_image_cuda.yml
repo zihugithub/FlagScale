@@ -231,7 +231,7 @@ jobs:
   # ---------------------------------------------------------------------------
   update-config:
     name: Update CI config
-    needs: [prepare, build]
+    needs: build
     runs-on: [self-hosted, Linux, X64]
     if: needs.prepare.outputs.push == 'true' && needs.build.result == 'success'
     steps:
@@ -281,7 +281,7 @@ jobs:
   # ---------------------------------------------------------------------------
   summary:
     name: Build summary
-    needs: [prepare, build]
+    needs: update-config
     runs-on: ubuntu-latest
     if: always()
     steps:
