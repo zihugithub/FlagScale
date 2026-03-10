@@ -124,6 +124,10 @@ jobs:
       inference_tag: ${{ steps.export.outputs.inference_tag }}
       all_tag: ${{ steps.export.outputs.all_tag }}
     steps:
+      - name: Set safe directory
+        run: |
+          git config --global --add safe.directory .
+
       - name: Checkout code
         uses: actions/checkout@v4
 
