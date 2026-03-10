@@ -15,7 +15,7 @@ env:
 jobs:
   promote:
     name: Push validated images to Harbor
-    runs-on: [self-hosted, Linux, X64]
+    runs-on: [self-hosted, Linux, X64, nvidia-0, gpus-8]
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -102,7 +102,7 @@ jobs:
   cleanup:
     name: Clean up build cache
     needs: promote
-    runs-on: [self-hosted, Linux, X64]
+    runs-on: [self-hosted, Linux, X64, nvidia-0, gpus-8]
     if: always()
     steps:
       - name: Remove dangling images

@@ -42,15 +42,6 @@ on:
         type: boolean
         default: false
 
-  # Auto-trigger on docker-related changes to main
-  push:
-    branches: [auto-build-image]
-    # paths:
-    #   - 'docker/cuda/**'
-    #   - 'docker/build.sh'
-    #   - 'tools/install/**'
-    #   - 'requirements/**'
-
   # Trigger on PRs that modify docker-related files
   pull_request:
     branches: [main]
@@ -59,6 +50,7 @@ on:
       - 'docker/build.sh'
       - 'tools/install/**'
       - 'requirements/**'
+      - '.github/workflows/build_image_cuda.yml'
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
@@ -122,7 +114,7 @@ jobs:
   build:
     name: Build ${{ matrix.task }}
     needs: prepare
-    runs-on: [self-hosted, Linux, X64]
+    runs-on: [self-hosted, Linux, X64, nvidia-0, gpus-8]
     strategy:
       fail-fast: false
       matrix: ${{ fromJson(needs.prepare.outputs.matrix) }}
@@ -199,41 +191,41 @@ jobs:
 
           echo "PKG_MGR: ${{ env.PKG_MGR }}"
 
-  #     - name: Build Docker image
-  #       uses: docker/build-push-action@v6
-  #       with:
-  #         context: .
-  #         file: docker/cuda/Dockerfile.${{ matrix.task }}
-  #         target: ${{ needs.prepare.outputs.target }}
-  #         load: true
-  #         tags: ${{ steps.meta.outputs.tags }}
-  #         build-args: |
-  #           BASE_IMAGE=${{ steps.meta.outputs.base_image }}
-  #           CUDA_VERSION=${{ env.CUDA_VERSION }}
-  #           UBUNTU_VERSION=${{ env.UBUNTU_VERSION }}
-  #           PYTHON_VERSION=${{ env.PYTHON_VERSION }}
-  #           UV_VERSION=${{ env.UV_VERSION }}
-  #           PYTORCH_INDEX=${{ steps.meta.outputs.pytorch_index }}
-  #           PKG_MGR=${{ env.PKG_MGR }}
-  #         no-cache: ${{ needs.prepare.outputs.no_cache == 'true' }}
+      - name: Build Docker image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: docker/cuda/Dockerfile.${{ matrix.task }}
+          target: ${{ needs.prepare.outputs.target }}
+          load: true
+          tags: ${{ steps.meta.outputs.tags }}
+          build-args: |
+            BASE_IMAGE=${{ steps.meta.outputs.base_image }}
+            CUDA_VERSION=${{ env.CUDA_VERSION }}
+            UBUNTU_VERSION=${{ env.UBUNTU_VERSION }}
+            PYTHON_VERSION=${{ env.PYTHON_VERSION }}
+            UV_VERSION=${{ env.UV_VERSION }}
+            PYTORCH_INDEX=${{ steps.meta.outputs.pytorch_index }}
+            PKG_MGR=${{ env.PKG_MGR }}
+          no-cache: ${{ needs.prepare.outputs.no_cache == 'true' }}
 
-  #     - name: Push Docker image
-  #       if: needs.prepare.outputs.push == 'true'
-  #       run: docker push ${{ steps.meta.outputs.local_tag }}
+      - name: Push Docker image
+        if: needs.prepare.outputs.push == 'true'
+        run: docker push ${{ steps.meta.outputs.local_tag }}
 
-  #     - name: Export image tag for config update
-  #       id: export
-  #       if: success() && needs.prepare.outputs.push == 'true'
-  #       run: |
-  #         TASK="${{ matrix.task }}"
-  #         echo "${TASK}_tag=${{ steps.meta.outputs.local_tag }}" >> $GITHUB_OUTPUT
+      - name: Export image tag for config update
+        id: export
+        if: success() && needs.prepare.outputs.push == 'true'
+        run: |
+          TASK="${{ matrix.task }}"
+          echo "${TASK}_tag=${{ steps.meta.outputs.local_tag }}" >> $GITHUB_OUTPUT
 
-  #     - name: Print build result
-  #       if: success()
-  #       run: |
-  #         echo "" >> $GITHUB_STEP_SUMMARY
-  #         echo "**Result:** Built successfully" >> $GITHUB_STEP_SUMMARY
-  #         echo "**Pushed:** ${{ needs.prepare.outputs.push }}" >> $GITHUB_STEP_SUMMARY
+      - name: Print build result
+        if: success()
+        run: |
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Result:** Built successfully" >> $GITHUB_STEP_SUMMARY
+          echo "**Pushed:** ${{ needs.prepare.outputs.push }}" >> $GITHUB_STEP_SUMMARY
 
   # ---------------------------------------------------------------------------
   # Update Config: update cuda.yml with localhost tags (temporary, for test validation)
@@ -256,10 +248,8 @@ jobs:
           set -euo pipefail
           CONFIG_FILE=".github/configs/cuda.yml"
 
-          # TRAIN_TAG="${{ needs.build.outputs.train_tag }}"
-          # INFERENCE_TAG="${{ needs.build.outputs.inference_tag }}"
-          TRAIN_TAG="localhost:5000/flagscale-train:dev-cu128-py3.12-20260310094749"
-          INFERENCE_TAG="localhost:5000/flagscale-inference:dev-cu128-py3.12-20260309212531"
+          TRAIN_TAG="${{ needs.build.outputs.train_tag }}"
+          INFERENCE_TAG="${{ needs.build.outputs.inference_tag }}"
 
           if [ -n "$TRAIN_TAG" ]; then
             echo "Updating ci_train_image to: $TRAIN_TAG"
