@@ -83,19 +83,6 @@ jobs:
           echo "remote_tag=${REMOTE_TAG}" >> $GITHUB_OUTPUT
           echo "Successfully pushed ${REMOTE_TAG}"
 
-      - name: Commit and push config update
-        if: steps.tags.outputs.needs_promotion == 'true'
-        run: |
-          git config user.name "github-actions[bot]"
-          git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add .github/configs/${{ inputs.platform }}.yml
-          if git diff --cached --quiet; then
-            echo "No config changes to commit"
-          else
-            git commit -m "ci: promote ${{ inputs.platform }} image tags to Harbor [skip ci]"
-            git push
-          fi
-
   # ---------------------------------------------------------------------------
   # Cleanup: clean up Docker build cache and dangling images on self-hosted runner
   # ---------------------------------------------------------------------------

@@ -88,7 +88,7 @@ jobs:
             # Manual trigger: build selected task only
             echo 'matrix={"task":["${{ inputs.task }}"]}' >> $GITHUB_OUTPUT
           else
-            # Push to main or build_all_tasks=true: build all tasks
+            # PR or build_all_tasks=true: build all tasks
             echo 'matrix={"task":["train","inference","all"]}' >> $GITHUB_OUTPUT
           fi
 
@@ -97,12 +97,13 @@ jobs:
         run: |
           EVENT="${{ github.event_name }}"
 
-          if [ "$EVENT" = "push" ]; then
-            # Push to main: always build dev images and push
+          if [ "$EVENT" = "pull_request" ]; then
+            # PR: always build dev images, push to local registry, use cache
             echo "target=dev" >> $GITHUB_OUTPUT
             echo "push=true" >> $GITHUB_OUTPUT
             echo "no_cache=false" >> $GITHUB_OUTPUT
           else
+            # workflow_dispatch: use user-provided inputs
             echo "target=${{ inputs.target || 'dev' }}" >> $GITHUB_OUTPUT
             echo "push=${{ inputs.push }}" >> $GITHUB_OUTPUT
             echo "no_cache=${{ inputs.no_cache }}" >> $GITHUB_OUTPUT
@@ -189,8 +190,6 @@ jobs:
             echo "| Local Tag | \`${LOCAL_TAG}\` |"
           } >> $GITHUB_STEP_SUMMARY
 
-          echo "PKG_MGR: ${{ env.PKG_MGR }}"
-
       - name: Build Docker image
         uses: docker/build-push-action@v6
         with:
@@ -235,7 +234,7 @@ jobs:
     name: Update CI config
     needs: build
     runs-on: [self-hosted, Linux, X64]
-    if: needs.prepare.outputs.push == 'true' && needs.build.result == 'success'
+    if: needs.build.result == 'success'
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
