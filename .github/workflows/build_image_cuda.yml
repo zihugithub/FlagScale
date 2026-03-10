@@ -108,122 +108,122 @@ jobs:
             echo "no_cache=${{ inputs.no_cache }}" >> $GITHUB_OUTPUT
           fi
 
-  # ---------------------------------------------------------------------------
-  # Build: build and push Docker images (matrix across tasks)
-  # ---------------------------------------------------------------------------
-  build:
-    name: Build ${{ matrix.task }}
-    needs: prepare
-    runs-on: [self-hosted, Linux, X64]
-    strategy:
-      fail-fast: false
-      matrix: ${{ fromJson(needs.prepare.outputs.matrix) }}
-    outputs:
-      train_tag: ${{ steps.export.outputs.train_tag }}
-      inference_tag: ${{ steps.export.outputs.inference_tag }}
-      all_tag: ${{ steps.export.outputs.all_tag }}
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
+  # # ---------------------------------------------------------------------------
+  # # Build: build and push Docker images (matrix across tasks)
+  # # ---------------------------------------------------------------------------
+  # build:
+  #   name: Build ${{ matrix.task }}
+  #   needs: prepare
+  #   runs-on: [self-hosted, Linux, X64]
+  #   strategy:
+  #     fail-fast: false
+  #     matrix: ${{ fromJson(needs.prepare.outputs.matrix) }}
+  #   outputs:
+  #     train_tag: ${{ steps.export.outputs.train_tag }}
+  #     inference_tag: ${{ steps.export.outputs.inference_tag }}
+  #     all_tag: ${{ steps.export.outputs.all_tag }}
+  #   steps:
+  #     - name: Checkout code
+  #       uses: actions/checkout@v4
 
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v3
-        with:
-          # Use docker driver to avoid pulling moby/buildkit from Docker Hub
-          driver: docker
+  #     - name: Set up Docker Buildx
+  #       uses: docker/setup-buildx-action@v3
+  #       with:
+  #         # Use docker driver to avoid pulling moby/buildkit from Docker Hub
+  #         driver: docker
 
-      - name: Compute build metadata
-        id: meta
-        run: |
-          set -euo pipefail
+  #     - name: Compute build metadata
+  #       id: meta
+  #       run: |
+  #         set -euo pipefail
 
-          TASK="${{ matrix.task }}"
-          TARGET="${{ needs.prepare.outputs.target }}"
-          CUDA_VERSION="${{ env.CUDA_VERSION }}"
-          PYTHON_VERSION="${{ env.PYTHON_VERSION }}"
-          UBUNTU_VERSION="${{ env.UBUNTU_VERSION }}"
+  #         TASK="${{ matrix.task }}"
+  #         TARGET="${{ needs.prepare.outputs.target }}"
+  #         CUDA_VERSION="${{ env.CUDA_VERSION }}"
+  #         PYTHON_VERSION="${{ env.PYTHON_VERSION }}"
+  #         UBUNTU_VERSION="${{ env.UBUNTU_VERSION }}"
 
-          CUDA_MAJOR=$(echo "$CUDA_VERSION" | cut -d. -f1)
-          CUDA_MINOR=$(echo "$CUDA_VERSION" | cut -d. -f2)
-          TIMESTAMP=$(date +%Y%m%d%H%M%S)
+  #         CUDA_MAJOR=$(echo "$CUDA_VERSION" | cut -d. -f1)
+  #         CUDA_MINOR=$(echo "$CUDA_VERSION" | cut -d. -f2)
+  #         TIMESTAMP=$(date +%Y%m%d%H%M%S)
 
-          # Image naming follows docker/build.sh convention:
-          #   flagscale-<task>:<target>-cu<major><minor>-py<version>-<timestamp>
-          IMAGE_NAME="flagscale-${TASK}"
-          TAG="${TARGET}-cu${CUDA_MAJOR}${CUDA_MINOR}-py${PYTHON_VERSION}-${TIMESTAMP}"
+  #         # Image naming follows docker/build.sh convention:
+  #         #   flagscale-<task>:<target>-cu<major><minor>-py<version>-<timestamp>
+  #         IMAGE_NAME="flagscale-${TASK}"
+  #         TAG="${TARGET}-cu${CUDA_MAJOR}${CUDA_MINOR}-py${PYTHON_VERSION}-${TIMESTAMP}"
 
-          # Local registry tag (for CI runners)
-          LOCAL_TAG="${{ env.REGISTRY }}/${IMAGE_NAME}:${TAG}"
+  #         # Local registry tag (for CI runners)
+  #         LOCAL_TAG="${{ env.REGISTRY }}/${IMAGE_NAME}:${TAG}"
 
-          # Derived build arguments
-          BASE_IMAGE="nvidia/cuda:${CUDA_VERSION}-devel-ubuntu${UBUNTU_VERSION}"
-          PYTORCH_INDEX="https://download.pytorch.org/whl/cu${CUDA_MAJOR}${CUDA_MINOR}"
+  #         # Derived build arguments
+  #         BASE_IMAGE="nvidia/cuda:${CUDA_VERSION}-devel-ubuntu${UBUNTU_VERSION}"
+  #         PYTORCH_INDEX="https://download.pytorch.org/whl/cu${CUDA_MAJOR}${CUDA_MINOR}"
 
-          # Tags list: local registry only
-          TAGS="${LOCAL_TAG}"
+  #         # Tags list: local registry only
+  #         TAGS="${LOCAL_TAG}"
 
-          echo "image_name=${IMAGE_NAME}" >> $GITHUB_OUTPUT
-          echo "tag=${TAG}" >> $GITHUB_OUTPUT
-          echo "local_tag=${LOCAL_TAG}" >> $GITHUB_OUTPUT
-          echo "base_image=${BASE_IMAGE}" >> $GITHUB_OUTPUT
-          echo "pytorch_index=${PYTORCH_INDEX}" >> $GITHUB_OUTPUT
+  #         echo "image_name=${IMAGE_NAME}" >> $GITHUB_OUTPUT
+  #         echo "tag=${TAG}" >> $GITHUB_OUTPUT
+  #         echo "local_tag=${LOCAL_TAG}" >> $GITHUB_OUTPUT
+  #         echo "base_image=${BASE_IMAGE}" >> $GITHUB_OUTPUT
+  #         echo "pytorch_index=${PYTORCH_INDEX}" >> $GITHUB_OUTPUT
 
-          # Multi-line tags output
-          {
-            echo "tags<<EOF"
-            echo "${TAGS}"
-            echo "EOF"
-          } >> $GITHUB_OUTPUT
+  #         # Multi-line tags output
+  #         {
+  #           echo "tags<<EOF"
+  #           echo "${TAGS}"
+  #           echo "EOF"
+  #         } >> $GITHUB_OUTPUT
 
-          # Job summary
-          {
-            echo "### Build: ${IMAGE_NAME}"
-            echo ""
-            echo "| Parameter | Value |"
-            echo "|---|---|"
-            echo "| Task | \`${TASK}\` |"
-            echo "| Target | \`${TARGET}\` |"
-            echo "| CUDA | \`${CUDA_VERSION}\` |"
-            echo "| Python | \`${PYTHON_VERSION}\` |"
-            echo "| Dockerfile | \`docker/cuda/Dockerfile.${TASK}\` |"
-            echo "| Local Tag | \`${LOCAL_TAG}\` |"
-          } >> $GITHUB_STEP_SUMMARY
+  #         # Job summary
+  #         {
+  #           echo "### Build: ${IMAGE_NAME}"
+  #           echo ""
+  #           echo "| Parameter | Value |"
+  #           echo "|---|---|"
+  #           echo "| Task | \`${TASK}\` |"
+  #           echo "| Target | \`${TARGET}\` |"
+  #           echo "| CUDA | \`${CUDA_VERSION}\` |"
+  #           echo "| Python | \`${PYTHON_VERSION}\` |"
+  #           echo "| Dockerfile | \`docker/cuda/Dockerfile.${TASK}\` |"
+  #           echo "| Local Tag | \`${LOCAL_TAG}\` |"
+  #         } >> $GITHUB_STEP_SUMMARY
 
-      - name: Build Docker image
-        uses: docker/build-push-action@v6
-        with:
-          context: .
-          file: docker/cuda/Dockerfile.${{ matrix.task }}
-          target: ${{ needs.prepare.outputs.target }}
-          load: true
-          tags: ${{ steps.meta.outputs.tags }}
-          build-args: |
-            BASE_IMAGE=${{ steps.meta.outputs.base_image }}
-            CUDA_VERSION=${{ env.CUDA_VERSION }}
-            UBUNTU_VERSION=${{ env.UBUNTU_VERSION }}
-            PYTHON_VERSION=${{ env.PYTHON_VERSION }}
-            UV_VERSION=${{ env.UV_VERSION }}
-            PYTORCH_INDEX=${{ steps.meta.outputs.pytorch_index }}
-            PKG_MGR=${{ env.PKG_MGR }}
-          no-cache: ${{ needs.prepare.outputs.no_cache == 'true' }}
+  #     - name: Build Docker image
+  #       uses: docker/build-push-action@v6
+  #       with:
+  #         context: .
+  #         file: docker/cuda/Dockerfile.${{ matrix.task }}
+  #         target: ${{ needs.prepare.outputs.target }}
+  #         load: true
+  #         tags: ${{ steps.meta.outputs.tags }}
+  #         build-args: |
+  #           BASE_IMAGE=${{ steps.meta.outputs.base_image }}
+  #           CUDA_VERSION=${{ env.CUDA_VERSION }}
+  #           UBUNTU_VERSION=${{ env.UBUNTU_VERSION }}
+  #           PYTHON_VERSION=${{ env.PYTHON_VERSION }}
+  #           UV_VERSION=${{ env.UV_VERSION }}
+  #           PYTORCH_INDEX=${{ steps.meta.outputs.pytorch_index }}
+  #           PKG_MGR=${{ env.PKG_MGR }}
+  #         no-cache: ${{ needs.prepare.outputs.no_cache == 'true' }}
 
-      - name: Push Docker image
-        if: needs.prepare.outputs.push == 'true'
-        run: docker push ${{ steps.meta.outputs.local_tag }}
+  #     - name: Push Docker image
+  #       if: needs.prepare.outputs.push == 'true'
+  #       run: docker push ${{ steps.meta.outputs.local_tag }}
 
-      - name: Export image tag for config update
-        id: export
-        if: success() && needs.prepare.outputs.push == 'true'
-        run: |
-          TASK="${{ matrix.task }}"
-          echo "${TASK}_tag=${{ steps.meta.outputs.local_tag }}" >> $GITHUB_OUTPUT
+  #     - name: Export image tag for config update
+  #       id: export
+  #       if: success() && needs.prepare.outputs.push == 'true'
+  #       run: |
+  #         TASK="${{ matrix.task }}"
+  #         echo "${TASK}_tag=${{ steps.meta.outputs.local_tag }}" >> $GITHUB_OUTPUT
 
-      - name: Print build result
-        if: success()
-        run: |
-          echo "" >> $GITHUB_STEP_SUMMARY
-          echo "**Result:** Built successfully" >> $GITHUB_STEP_SUMMARY
-          echo "**Pushed:** ${{ needs.prepare.outputs.push }}" >> $GITHUB_STEP_SUMMARY
+  #     - name: Print build result
+  #       if: success()
+  #       run: |
+  #         echo "" >> $GITHUB_STEP_SUMMARY
+  #         echo "**Result:** Built successfully" >> $GITHUB_STEP_SUMMARY
+  #         echo "**Pushed:** ${{ needs.prepare.outputs.push }}" >> $GITHUB_STEP_SUMMARY
 
   # ---------------------------------------------------------------------------
   # Update Config: update cuda.yml with localhost tags (temporary, for test validation)
@@ -248,8 +248,8 @@ jobs:
 
           # TRAIN_TAG="${{ needs.build.outputs.train_tag }}"
           # INFERENCE_TAG="${{ needs.build.outputs.inference_tag }}"
-          TRAIN_TAG="localhost:5000/flagscale-train:dev-cu128-py3.12-20260306112539"
-          INFERENCE_TAG="localhost:5000/flagscale-inference:dev-cu128-py3.12-20260306100728"
+          TRAIN_TAG="localhost:5000/flagscale-train:dev-cu128-py3.12-20260310094749"
+          INFERENCE_TAG="localhost:5000/flagscale-inference:dev-cu128-py3.12-20260309212531"
 
           if [ -n "$TRAIN_TAG" ]; then
             echo "Updating ci_train_image to: $TRAIN_TAG"
