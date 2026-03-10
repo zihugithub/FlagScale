@@ -29,6 +29,14 @@ on:
         description: 'Build without Docker cache'
         type: boolean
         default: false
+      pkg_mgr:
+        description: 'Package manager to use'
+        required: true
+        type: choice
+        options:
+          - conda
+          - uv
+        default: 'conda'
       build_all_tasks:
         description: 'Build all tasks (train, inference, all) - overrides task selection'
         type: boolean
@@ -64,7 +72,7 @@ env:
   UBUNTU_VERSION: '22.04'
   PYTHON_VERSION: '3.12'
   UV_VERSION: '0.7.2'
-  PKG_MGR: 'conda'
+  PKG_MGR: ${{ inputs.pkg_mgr || 'conda' }}
 
 jobs:
   # ---------------------------------------------------------------------------
@@ -188,6 +196,8 @@ jobs:
             echo "| Dockerfile | \`docker/cuda/Dockerfile.${TASK}\` |"
             echo "| Local Tag | \`${LOCAL_TAG}\` |"
           } >> $GITHUB_STEP_SUMMARY
+
+          echo "PKG_MGR: ${{ env.PKG_MGR }}"
 
   #     - name: Build Docker image
   #       uses: docker/build-push-action@v6

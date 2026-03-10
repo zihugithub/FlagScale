@@ -7,7 +7,7 @@ on:
     types: [completed]
 
   push:
-    branches: ["main"]
+    branches: ["auto-build-image"]
   pull_request:
     branches: ["main"]
 
