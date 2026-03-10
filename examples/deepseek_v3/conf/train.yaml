@@ -18,10 +18,10 @@ experiment:
     per_node_task: false
     no_shared_fs: false
     rdzv_backend: static
-    hostfile: /share/project/lixianduo/scale_gems_cx/host_cur
+    hostfile: /share/project/lixianduo/scale_gems_cx/host_single
     ssh_port: 7878
   cmds:
-    before_start: ulimit -n 1048576 && source /root/miniconda3/bin/activate /share/project/lixianduo/envs/flagscale-train-gems-cx-fix
+    before_start: ulimit -n 1048576 && source /root/miniconda3/bin/activate /share/project/lixianduo/envs/flagscale-train-copy
   envs:
     LOGLEVEL: "INFO"
     CUDA_VISIBLE_DEVICES: "0,1,2,3,4,5,6,7"

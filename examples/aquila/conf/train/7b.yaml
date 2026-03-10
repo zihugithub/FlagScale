@@ -1,6 +1,6 @@
 system:
-  tensor_model_parallel_size: 1
-  pipeline_model_parallel_size: 1
+  tensor_model_parallel_size: 2
+  pipeline_model_parallel_size: 2
   disable_bias_linear: True
   use_flash_attn: True
   use_distributed_optimizer: True
