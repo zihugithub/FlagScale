@@ -38,3 +38,14 @@ jobs:
             exit 1
           fi
           echo "✅ All tests passed!"
+
+  push_images_to_harbor:
+    needs: all_tests
+    if: >-
+      needs.all_tests.result == 'success' &&
+      github.event_name == 'workflow_run' &&
+      github.event.workflow_run.conclusion == 'success'
+    uses: ./.github/workflows/push_image_harbor.yml
+    with:
+      platform: cuda
+    secrets: inherit

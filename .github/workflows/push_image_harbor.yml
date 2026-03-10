@@ -1,13 +1,12 @@
 name: Push Images to Harbor
 
 on:
-  workflow_run:
-    workflows: ["cuda_tests", "Build Docker Images - CUDA"]
-    types: [completed]
-
-concurrency:
-  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
-  cancel-in-progress: true
+  workflow_call:
+    inputs:
+      platform:
+        required: true
+        type: string
+        description: "Platform name (e.g. cuda), used to locate .github/configs/<platform>.yml"
 
 env:
   REMOTE_REGISTRY: harbor.baai.ac.cn
@@ -17,57 +16,15 @@ jobs:
   promote:
     name: Push validated images to Harbor
     runs-on: [self-hosted, Linux, X64]
-    # Only proceed when the triggering workflow itself succeeded
-    if: github.event.workflow_run.conclusion == 'success'
     steps:
-      - name: Verify both workflows succeeded
-        id: verify
-        uses: actions/github-script@v7
-        with:
-          script: |
-            const sha = context.payload.workflow_run.head_sha;
-            const workflows = [
-              { name: 'cuda_tests', file: 'all_tests_cuda.yml' },
-              { name: 'Build Docker Images - CUDA', file: 'build_image_cuda.yml' }
-            ];
-
-            for (const wf of workflows) {
-              const runs = await github.rest.actions.listWorkflowRuns({
-                owner: context.repo.owner,
-                repo: context.repo.repo,
-                workflow_id: wf.file,
-                head_sha: sha,
-                status: 'success',
-                per_page: 1
-              });
-
-              if (runs.data.total_count === 0) {
-                core.info(`Workflow "${wf.name}" has not succeeded yet for SHA ${sha}, skipping.`);
-                core.setOutput('ready', 'false');
-                return;
-              }
-              core.info(`✓ Workflow "${wf.name}" succeeded for SHA ${sha}`);
-            }
-            core.info('Both workflows succeeded, proceeding with image promotion.');
-            core.setOutput('ready', 'true');
-
-      - name: Abort if not ready
-        if: steps.verify.outputs.ready != 'true'
-        run: |
-          echo "Not all required workflows have succeeded yet. Exiting."
-          exit 1
-
       - name: Checkout code
         uses: actions/checkout@v4
-        with:
-          ref: ${{ github.event.workflow_run.head_branch }}
-          token: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Read image tags from config
         id: tags
         run: |
           set -euo pipefail
-          CONFIG_FILE=".github/configs/cuda.yml"
+          CONFIG_FILE=".github/configs/${{ inputs.platform }}.yml"
 
           TRAIN_TAG=$(grep '^ci_train_image:' "$CONFIG_FILE" | awk '{print $2}')
           INFERENCE_TAG=$(grep '^ci_inference_image:' "$CONFIG_FILE" | awk '{print $2}')
@@ -126,38 +83,16 @@ jobs:
           echo "remote_tag=${REMOTE_TAG}" >> $GITHUB_OUTPUT
           echo "Successfully pushed ${REMOTE_TAG}"
 
-      - name: Update cuda.yml with Harbor image tags
-        if: steps.tags.outputs.needs_promotion == 'true'
-        run: |
-          set -euo pipefail
-          CONFIG_FILE=".github/configs/cuda.yml"
-
-          TRAIN_REMOTE="${{ steps.promote_train.outputs.remote_tag }}"
-          INFERENCE_REMOTE="${{ steps.promote_inference.outputs.remote_tag }}"
-
-          if [ -n "$TRAIN_REMOTE" ]; then
-            echo "Updating ci_train_image to: $TRAIN_REMOTE"
-            sed -i "s|^ci_train_image:.*|ci_train_image: ${TRAIN_REMOTE}|" "$CONFIG_FILE"
-          fi
-
-          if [ -n "$INFERENCE_REMOTE" ]; then
-            echo "Updating ci_inference_image to: $INFERENCE_REMOTE"
-            sed -i "s|^ci_inference_image:.*|ci_inference_image: ${INFERENCE_REMOTE}|" "$CONFIG_FILE"
-          fi
-
-          echo "Updated config:"
-          cat "$CONFIG_FILE"
-
       - name: Commit and push config update
         if: steps.tags.outputs.needs_promotion == 'true'
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add .github/configs/cuda.yml
+          git add .github/configs/${{ inputs.platform }}.yml
           if git diff --cached --quiet; then
             echo "No config changes to commit"
           else
-            git commit -m "ci: promote CUDA image tags to Harbor [skip ci]"
+            git commit -m "ci: promote ${{ inputs.platform }} image tags to Harbor [skip ci]"
             git push
           fi
 
