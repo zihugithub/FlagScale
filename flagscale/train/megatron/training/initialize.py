@@ -23,7 +23,12 @@ from megatron.core.rerun_state_machine import (
     initialize_rerun_state_machine,
 )
 from megatron.core.utils import get_te_version, is_te_min_version, is_torch_min_version
-from megatron.legacy import fused_kernels
+
+try:
+    from megatron.legacy import fused_kernels
+except ImportError:
+    fused_kernels = None
+
 from megatron.training import get_adlr_autoresume, get_args, get_tensorboard_writer
 from megatron.training import inprocess_restart
 from megatron.training.arguments import parse_args, validate_args
@@ -241,11 +246,19 @@ def _compile_dependencies():
     if torch.distributed.get_rank() == 0:
         start_time = time.time()
         print("> compiling and loading fused kernels ...", flush=True)
-        fused_kernels.load(args)
+        try:
+            if fused_kernels is not None:
+                fused_kernels.load(args)
+        except Exception as e:
+            print("> fused kernels are not available for platform: {cur_platform.device_name()}")
         torch.distributed.barrier()
     else:
         torch.distributed.barrier()
-        fused_kernels.load(args)
+        try:
+            if fused_kernels is not None:
+                fused_kernels.load(args)
+        except Exception as e:
+            print("> fused kernels are not available for platform: {cur_platform.device_name()}")
     # Simple barrier to make sure all ranks have passed the
     # compilation phase successfully before moving on to the
     # rest of the program. We think this might ensure that
