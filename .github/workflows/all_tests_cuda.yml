@@ -5,26 +5,21 @@ on:
     branches: ["auto-build-image"]
   pull_request:
     branches: ["main"]
-  # Auto-trigger after build_image_cuda completes (for non-PR builds like manual/push)
-  workflow_run:
-    workflows: ["Build Docker Images - CUDA"]
-    types: [completed]
 
 concurrency:
-  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.event.workflow_run.head_branch || github.ref }}-${{ github.actor }}
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}-${{ github.actor }}
   cancel-in-progress: true
 
 jobs:
   # ---------------------------------------------------------------------------
-  # Gate: decide whether to run tests or defer to workflow_run trigger
+  # Gate: decide whether to run tests now or wait for image build
   #
-  # - push / pull_request:
-  #     Check if "Build Docker Images - CUDA" is also running for this commit.
-  #     If found  → skip tests (workflow_run will trigger them after build finishes)
-  #     If absent → run tests immediately
-  #
-  # - workflow_run:
-  #     Build has finished → run tests only if it succeeded
+  # 1. Check if "Build Docker Images - CUDA" is running for this commit
+  #    (poll for up to ~2 min to allow it to start)
+  # 2. If found  → wait for it to complete (up to 30 min)
+  #      - succeeded → run tests
+  #      - failed/cancelled/timeout → skip tests
+  # 3. If not found → run tests immediately
   # ---------------------------------------------------------------------------
   wait_for_image_build:
     name: Check image build dependency
@@ -37,33 +32,18 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          EVENT="${{ github.event_name }}"
-
-          # ── workflow_run: build just finished, run tests if it succeeded ──
-          if [ "$EVENT" = "workflow_run" ]; then
-            CONCLUSION="${{ github.event.workflow_run.conclusion }}"
-            if [ "$CONCLUSION" = "success" ]; then
-              echo "Build Docker Images - CUDA succeeded — running tests"
-              echo "should_test=true" >> $GITHUB_OUTPUT
-            else
-              echo "Build Docker Images - CUDA did not succeed (conclusion: $CONCLUSION) — skipping tests"
-              echo "should_test=false" >> $GITHUB_OUTPUT
-            fi
-            exit 0
-          fi
-
-          # ── push / pull_request: check if build workflow is also triggered ──
-          if [ "$EVENT" = "push" ]; then
+          if [ "${{ github.event_name }}" = "push" ]; then
             HEAD_SHA="${{ github.sha }}"
           else
             HEAD_SHA="${{ github.event.pull_request.head.sha }}"
           fi
 
-          # Brief grace period to let the build workflow start (they trigger simultaneously)
-          POLL_INTERVAL=30
-          MAX_CHECKS=4   # up to ~2 minutes
+          # ── Phase 1: detect whether the build workflow was triggered ──
+          DETECT_INTERVAL=30
+          DETECT_MAX=4   # up to ~2 minutes
 
-          for i in $(seq 1 $MAX_CHECKS); do
+          BUILD_FOUND=false
+          for i in $(seq 1 $DETECT_MAX); do
             RUN_INFO=$(gh run list \
               --workflow=build_image_cuda.yml \
               --commit="$HEAD_SHA" \
@@ -73,20 +53,54 @@ jobs:
             STATUS=$(echo "$RUN_INFO" | jq -r '.status // "not_found"')
 
             if [ "$STATUS" != "not_found" ]; then
+              BUILD_FOUND=true
               echo "Build Docker Images - CUDA detected (status: $STATUS) for SHA $HEAD_SHA"
-              echo "Deferring tests to workflow_run trigger after build completes"
-              echo "should_test=false" >> $GITHUB_OUTPUT
-              exit 0
+              break
             fi
 
-            if [ "$i" -lt "$MAX_CHECKS" ]; then
-              echo "Build workflow not found yet — checking again in ${POLL_INTERVAL}s ($i/$MAX_CHECKS)"
-              sleep $POLL_INTERVAL
+            if [ "$i" -lt "$DETECT_MAX" ]; then
+              echo "Build workflow not found yet — checking again in ${DETECT_INTERVAL}s ($i/$DETECT_MAX)"
+              sleep $DETECT_INTERVAL
             fi
           done
 
-          echo "No Build Docker Images - CUDA workflow found — running tests immediately"
-          echo "should_test=true" >> $GITHUB_OUTPUT
+          if [ "$BUILD_FOUND" = "false" ]; then
+            echo "No Build Docker Images - CUDA workflow found — running tests immediately"
+            echo "should_test=true" >> $GITHUB_OUTPUT
+            exit 0
+          fi
+
+          # ── Phase 2: wait for the build workflow to complete ──
+          WAIT_INTERVAL=60
+          WAIT_MAX=360   # up to ~360 minutes
+
+          for i in $(seq 1 $WAIT_MAX); do
+            RUN_INFO=$(gh run list \
+              --workflow=build_image_cuda.yml \
+              --commit="$HEAD_SHA" \
+              --json status,conclusion \
+              --jq '.[0]' 2>/dev/null || echo '{}')
+
+            STATUS=$(echo "$RUN_INFO" | jq -r '.status // "not_found"')
+            CONCLUSION=$(echo "$RUN_INFO" | jq -r '.conclusion // ""')
+
+            if [ "$STATUS" = "completed" ]; then
+              if [ "$CONCLUSION" = "success" ]; then
+                echo "Build Docker Images - CUDA succeeded — running tests"
+                echo "should_test=true" >> $GITHUB_OUTPUT
+              else
+                echo "Build Docker Images - CUDA finished with conclusion: $CONCLUSION — skipping tests"
+                echo "should_test=false" >> $GITHUB_OUTPUT
+              fi
+              exit 0
+            fi
+
+            echo "Build still running (status: $STATUS) — waiting ${WAIT_INTERVAL}s ($i/$WAIT_MAX)"
+            sleep $WAIT_INTERVAL
+          done
+
+          echo "Timed out waiting for Build Docker Images - CUDA — skipping tests"
+          echo "should_test=false" >> $GITHUB_OUTPUT
 
   run_tests:
     needs: [wait_for_image_build]

@@ -17,6 +17,7 @@ jobs:
     if: github.event.workflow_run.conclusion == 'success'
     steps:
       - name: Verify both workflows succeeded
+        id: verify
         uses: actions/github-script@v7
         with:
           script: |
@@ -38,13 +39,16 @@ jobs:
 
               if (runs.data.total_count === 0) {
                 core.info(`Workflow "${wf.name}" has not succeeded yet for SHA ${sha}, skipping.`);
-                process.exit(0);
+                core.setOutput('ready', 'false');
+                return;
               }
               core.info(`✓ Workflow "${wf.name}" succeeded for SHA ${sha}`);
             }
             core.info('Both workflows succeeded, proceeding with image promotion.');
+            core.setOutput('ready', 'true');
 
       - name: Checkout code
+        if: steps.verify.outputs.ready == 'true'
         uses: actions/checkout@v4
         with:
           ref: ${{ github.event.workflow_run.head_branch }}
@@ -52,6 +56,7 @@ jobs:
 
       - name: Read image tags from config
         id: tags
+        if: steps.verify.outputs.ready == 'true'
         run: |
           set -euo pipefail
           CONFIG_FILE=".github/configs/cuda.yml"
@@ -72,7 +77,7 @@ jobs:
           fi
 
       - name: Login to Harbor registry
-        if: steps.tags.outputs.needs_promotion == 'true'
+        if: steps.verify.outputs.ready == 'true' && steps.tags.outputs.needs_promotion == 'true'
         uses: docker/login-action@v3
         with:
           registry: ${{ env.REMOTE_REGISTRY }}
@@ -81,7 +86,7 @@ jobs:
 
       - name: Promote train image to Harbor
         id: promote_train
-        if: steps.tags.outputs.needs_promotion == 'true' && steps.tags.outputs.train_tag != ''
+        if: steps.verify.outputs.ready == 'true' && steps.tags.outputs.needs_promotion == 'true' && steps.tags.outputs.train_tag != ''
         run: |
           set -euo pipefail
           LOCAL_TAG="${{ steps.tags.outputs.train_tag }}"
@@ -98,7 +103,7 @@ jobs:
 
       - name: Promote inference image to Harbor
         id: promote_inference
-        if: steps.tags.outputs.needs_promotion == 'true' && steps.tags.outputs.inference_tag != ''
+        if: steps.verify.outputs.ready == 'true' && steps.tags.outputs.needs_promotion == 'true' && steps.tags.outputs.inference_tag != ''
         run: |
           set -euo pipefail
           LOCAL_TAG="${{ steps.tags.outputs.inference_tag }}"
@@ -114,7 +119,7 @@ jobs:
           echo "Successfully pushed ${REMOTE_TAG}"
 
       - name: Update cuda.yml with Harbor image tags
-        if: steps.tags.outputs.needs_promotion == 'true'
+        if: steps.verify.outputs.ready == 'true' && steps.tags.outputs.needs_promotion == 'true'
         run: |
           set -euo pipefail
           CONFIG_FILE=".github/configs/cuda.yml"
@@ -136,7 +141,7 @@ jobs:
           cat "$CONFIG_FILE"
 
       - name: Commit and push config update
-        if: steps.tags.outputs.needs_promotion == 'true'
+        if: steps.verify.outputs.ready == 'true' && steps.tags.outputs.needs_promotion == 'true'
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
