@@ -124,9 +124,6 @@ jobs:
       inference_tag: ${{ steps.export.outputs.inference_tag }}
       all_tag: ${{ steps.export.outputs.all_tag }}
     steps:
-      - name: Clean workspace
-        run: sudo rm -rf "$GITHUB_WORKSPACE"/* "$GITHUB_WORKSPACE"/.[!.]* || true
-
       - name: Checkout code
         uses: actions/checkout@v4
 
@@ -239,9 +236,6 @@ jobs:
     runs-on: [self-hosted, Linux, X64]
     if: needs.build.result == 'success'
     steps:
-      - name: Clean workspace
-        run: sudo rm -rf "$GITHUB_WORKSPACE"/* "$GITHUB_WORKSPACE"/.[!.]* || true
-
       - name: Checkout code
         uses: actions/checkout@v4
         with:
