@@ -214,7 +214,7 @@ jobs:
   functional_tests_benchmark:
     needs:
       - checkout_and_config
-      - unit_tests
+      # - unit_tests
     if: fromJson(needs.checkout_and_config.outputs.benchmark_test_matrix)[0] != null
     uses: ./.github/workflows/functional_tests_benchmark.yml
     with:
