@@ -1,7 +1,7 @@
 system:
   tensor_model_parallel_size: 2
-  pipeline_model_parallel_size: 2
-  expert_model_parallel_size: 2
+  pipeline_model_parallel_size: 4
+  expert_model_parallel_size: 4
   use_mcore_models: true
   transformer_impl: transformer_engine
   sequence_parallel: true
@@ -19,7 +19,7 @@ system:
 
 
 model:
-  num_layers: 16
+  num_layers: 32
   hidden_size: 4096
   ffn_hidden_size: 14336
   num_attention_heads: 32
@@ -49,7 +49,7 @@ model:
   # seed: 42
   train_iters: 1000
   micro_batch_size: 1
-  global_batch_size: 128
+  global_batch_size: 2048
   clip_grad: 1.0
   eval_interval: 1000
   eval_iters: 10
@@ -65,15 +65,9 @@ model:
 
 
 data:
-  reset_position_ids: True
-  reset_attention_mask: True
-  # data_path: /share/project/lixianduo/demo_data/pile/pile_wikipedia_demo
-  data_path: /share/project/lizhiyu/hetero_data/HQ_wo_fim/Nemotron-CC-high-actual-actual-high_text_document
+  data_path: <xxxx>
   split: 1
-  no_mmap_bin_files: true
   tokenizer:
-    legacy_tokenizer: true
     tokenizer_type: QwenTokenizerFS
-    tokenizer_path: /share/project/lixianduo/qwentokenizer
-    vocab_size: 151851
+    tokenizer_path: <xxxx>
     make_vocab_size_divisible_by: 64

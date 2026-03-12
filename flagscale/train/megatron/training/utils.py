@@ -110,14 +110,14 @@ def calc_params_l2_norm(model, force_create_fp32_copy=False):
                         params_data.append(param.data)
 
     # Calculate norm.
-    dummy_overflow_buf = torch.tensor([0], dtype=torch.int, device=cur_platform.device())
+    dummy_overflow_buf = torch.tensor([0], dtype=torch.int, device=cur_platform.device_name())
     if len(params_data) > 0:
         norm, _ = multi_tensor_applier(
             multi_tensor_l2norm, dummy_overflow_buf, [params_data], False  # no per-parameter norm.
         )
         norm_2 = norm * norm
     else:
-        norm_2 = torch.zeros((1,), dtype=torch.float32, device=cur_platform.device())
+        norm_2 = torch.zeros((1,), dtype=torch.float32, device=cur_platform.device_name())
 
     if data_parallel_group is not None:
         torch.distributed.all_reduce(
@@ -232,12 +232,12 @@ def calc_dtensor_params_l2_norm(params):
     for param in params:
         params_data[param._spec].append(param._local_tensor)
 
-    total_norm_2 = torch.zeros((1,), dtype=torch.float32, device=cur_platform.device())
-    dummy_overflow_buf = torch.zeros((1,), dtype=torch.int, device=cur_platform.device())
+    total_norm_2 = torch.zeros((1,), dtype=torch.float32, device=cur_platform.device_name())
+    dummy_overflow_buf = torch.zeros((1,), dtype=torch.int, device=cur_platform.device_name())
     for dtensor_spec, local_tensors in params_data.items():
         local_tensors = [t for t in local_tensors if t.numel() > 0]
         if len(local_tensors) == 0:
-            norm = torch.zeros((1,), dtype=torch.float32, device=cur_platform.device())
+            norm = torch.zeros((1,), dtype=torch.float32, device=cur_platform.device_name())
         else:
             norm, _ = multi_tensor_applier(
                 multi_tensor_l2norm, dummy_overflow_buf, [local_tensors], False  # no per-parameter norm.

@@ -202,7 +202,7 @@ class BertModel(MegatronModule):
                 output = torch.zeros(
                     size=(embeddings.shape[0], embeddings.shape[2]),
                     dtype=torch.float32,
-                    device=cur_platform.device())
+                    device=cur_platform.current_device())
                 for i, (embedding, mask) in enumerate(zip(embeddings, masks)):
                     output[i, :] = torch.mean(embedding[1: mask - 1], dim=0)
 

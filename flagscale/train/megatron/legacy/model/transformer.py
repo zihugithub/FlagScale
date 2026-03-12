@@ -239,7 +239,7 @@ class SwitchMLP(MegatronModule):
 
         # TODO pre allocate memory
         output = torch.empty(dim_size, dtype=local_indices.dtype,
-                             device=cur_platform.device())
+                             device=cur_platform.current_device())
         torch.distributed._all_gather_base(
             output, local_indices.contiguous(), group=self.tp_ep_group
         )
@@ -655,7 +655,7 @@ class ParallelAttention(MegatronModule):
             num_attention_heads,
             self.hidden_size_per_attention_head,
             dtype=self.params_dtype,
-            device=cur_platform.device())
+            device=cur_platform.current_device())
 
     def forward(self, hidden_states, attention_mask,
                 encoder_output=None, inference_context=None,
