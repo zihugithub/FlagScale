@@ -1,0 +1,16 @@
+{
+    "elapsed time per iteration (ms):": {
+        "values": [],
+        "threshold": {
+            "type": "upper_bound",
+            "tolerance": 0.1
+        }
+    },
+    "throughput per GPU (TFLOP/s/GPU):": {
+        "values": [],
+        "threshold": {
+            "type": "lower_bound",
+            "tolerance": 0.1
+        }
+    }
+}

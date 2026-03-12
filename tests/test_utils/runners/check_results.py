@@ -465,14 +465,11 @@ def test_benchmark_equal(path, task, model, case):
     - throughput per GPU (TFLOP/s/GPU): must not fall below baseline by more than tolerance
     """
     test_result_path = os.path.join(path, task, model, "test_results", case)
-    start_path = os.path.join(test_result_path, "logs/details/host_0_localhost")
-
-    result_path, attempt_path = find_latest_stdout_log(start_path)
-
-    assert attempt_path is not None, f"Failed to find any 'attempt_*' directory in {start_path}"
-    assert result_path is not None, f"Failed to find 'stdout.log' in {attempt_path}"
+    result_path = os.path.join(test_result_path, "logs/host_0_localhost.output")
 
     print(f"result_path: {result_path}")
+
+    assert os.path.exists(result_path), f"Failed to find 'host_0_localhost.output' at {result_path}"
 
     with open(result_path, "r") as file:
         lines = file.readlines()
