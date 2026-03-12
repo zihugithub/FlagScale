@@ -2,7 +2,7 @@ name: cuda_tests
 
 on:
   push:
-    branches: ["add-benchmark"]
+    branches: ["main"]
   pull_request:
     branches: ["main"]
 
