@@ -1,13 +1,13 @@
 {
     "elapsed time per iteration (ms):": {
-        "values": [],
+        "values": [25170.1, 9596.6, 7642.8, 7950.8, 7817.7, 8025.3, 7920.0, 7859.4, 7897.2, 7947.0, 7637.7, 7804.2, 8037.7, 7825.6, 8047.3, 7748.1, 7900.4, 7697.5, 7988.9, 6720.0],
         "threshold": {
             "type": "upper_bound",
             "tolerance": 0.1
         }
     },
     "throughput per GPU (TFLOP/s/GPU):": {
-        "values": [],
+        "values": [2.1, 5.5, 6.9, 6.6, 6.7, 6.6, 6.7, 6.7, 6.7, 6.6, 6.9, 6.7, 6.6, 6.7, 6.5, 6.8, 6.7, 6.8, 6.6, 7.8],
         "threshold": {
             "type": "lower_bound",
             "tolerance": 0.1
