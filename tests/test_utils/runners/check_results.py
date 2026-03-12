@@ -529,7 +529,9 @@ def test_benchmark_equal(path, task, model, case):
         # Compare using tolerance-based approach
         # Skip warmup iterations for comparison
         skip_warmup = min(5, len(gold_values))
-        result_stable = result_values[skip_warmup:] if len(result_values) > skip_warmup else result_values
+        result_stable = (
+            result_values[skip_warmup:] if len(result_values) > skip_warmup else result_values
+        )
         gold_stable = gold_values[skip_warmup:] if len(gold_values) > skip_warmup else gold_values
 
         if len(result_stable) == 0 or len(gold_stable) == 0:
@@ -545,27 +547,35 @@ def test_benchmark_equal(path, task, model, case):
         if threshold_type == "upper_bound":
             upper_limit = gold_avg * (1 + tolerance)
             passed = result_avg <= upper_limit
-            print(f"Upper limit ({tolerance*100:.0f}% tolerance): {upper_limit:.4f}")
+            print(f"Upper limit ({tolerance * 100:.0f}% tolerance): {upper_limit:.4f}")
             print(f"Status: {'PASS' if passed else 'FAIL'}")
             if not passed:
                 regression_pct = ((result_avg - gold_avg) / gold_avg) * 100
-                print(f"Regression: +{regression_pct:.1f}% (exceeded {tolerance*100:.0f}% tolerance)")
+                print(
+                    f"Regression: +{regression_pct:.1f}% (exceeded {tolerance * 100:.0f}% tolerance)"
+                )
                 all_passed = False
         elif threshold_type == "lower_bound":
             lower_limit = gold_avg * (1 - tolerance)
             passed = result_avg >= lower_limit
-            print(f"Lower limit ({tolerance*100:.0f}% tolerance): {lower_limit:.4f}")
+            print(f"Lower limit ({tolerance * 100:.0f}% tolerance): {lower_limit:.4f}")
             print(f"Status: {'PASS' if passed else 'FAIL'}")
             if not passed:
                 regression_pct = ((gold_avg - result_avg) / gold_avg) * 100
-                print(f"Regression: -{regression_pct:.1f}% (below {tolerance*100:.0f}% tolerance)")
+                print(
+                    f"Regression: -{regression_pct:.1f}% (below {tolerance * 100:.0f}% tolerance)"
+                )
                 all_passed = False
 
     print(f"\n{'=' * 70}")
-    print(f"Overall benchmark result: {'ALL CHECKS PASSED' if all_passed else 'PERFORMANCE REGRESSION DETECTED'}")
+    print(
+        f"Overall benchmark result: {'ALL CHECKS PASSED' if all_passed else 'PERFORMANCE REGRESSION DETECTED'}"
+    )
     print(f"{'=' * 70}\n")
 
-    assert all_passed, "Performance regression detected - one or more metrics exceeded tolerance thresholds"
+    assert all_passed, (
+        "Performance regression detected - one or more metrics exceeded tolerance thresholds"
+    )
 
 
 @pytest.mark.usefixtures("path", "task", "model", "case")
