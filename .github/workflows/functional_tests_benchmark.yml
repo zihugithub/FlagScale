@@ -235,12 +235,34 @@ jobs:
           exit $exit_code
         timeout-minutes: 60
 
+      - name: Parse benchmark output to JSON
+        if: always() && steps.benchmark_test.outcome == 'success'
+        run: |
+          set -euo pipefail
+          cd $PROJECT_ROOT
+
+          TASK='${{ matrix.test_config.task }}'
+          MODEL='${{ matrix.test_config.model }}'
+          CASE='${{ matrix.test_config.case }}'
+
+          LOG_FILE="tests/functional_tests/${TASK}/${MODEL}/test_results/${CASE}/logs/host_0_localhost.output"
+          GOLD_FILE="tests/functional_tests/${TASK}/${MODEL}/gold_values/${CASE}.json"
+          OUTPUT_FILE="tests/functional_tests/${TASK}/${MODEL}/test_results/${CASE}/logs/benchmark_metrics.json"
+
+          echo "Parsing benchmark output to JSON"
+          echo "Log file: $LOG_FILE"
+          echo "Gold values: $GOLD_FILE"
+          echo "Output: $OUTPUT_FILE"
+
+          python tests/test_utils/runners/parse_benchmark_output.py \
+            "$LOG_FILE" "$GOLD_FILE" "$OUTPUT_FILE"
+
       - name: Upload benchmark data to backend
         if: always() && steps.benchmark_test.outcome == 'success'
-        uses: flagos-ai/FlagOps/actions/post-benchmark-report@main
+        uses: zihugithub/FlagOps/actions/post-benchmark-report@post-benchmark-report
         with:
-          backend_url: 'http://10.1.4.167:30181/flagcicd-files/'
-          results_dir: ${{ env.PROJECT_ROOT }}/tests/functional_tests/${{ matrix.test_config.task }}/${{ matrix.test_config.model }}/test_results/${{ matrix.test_config.case }}
+          backend_url: 'http://10.1.4.167:30180/flagcicd-backend/metrics/'
+          results_file: ${{ env.PROJECT_ROOT }}/tests/functional_tests/${{ matrix.test_config.task }}/${{ matrix.test_config.model }}/test_results/${{ matrix.test_config.case }}/logs/benchmark_metrics.json
           job_name: 'benchmark_${{ matrix.test_config.model }}_${{ matrix.test_config.case }}'
           fail_on_error: 'false'
 
