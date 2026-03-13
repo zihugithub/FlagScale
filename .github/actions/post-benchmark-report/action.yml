@@ -118,11 +118,8 @@ runs:
           -F "job_name=${{ steps.resolve.outputs.job_name }}"
         )
 
-        # Conditionally add pr_id
-        PR_ID="${{ steps.resolve.outputs.pr_id }}"
-        if [ -n "$PR_ID" ]; then
-          CURL_ARGS+=(-F "pr_id=$PR_ID")
-        fi
+        # Always add pr_id (required by backend)
+        CURL_ARGS+=(-F "pr_id=${{ steps.resolve.outputs.pr_id }}")
 
         # Add the file
         CURL_ARGS+=(-F "file=@${{ inputs.report_path }}")
