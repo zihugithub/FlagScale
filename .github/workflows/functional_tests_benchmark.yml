@@ -235,6 +235,15 @@ jobs:
           exit $exit_code
         timeout-minutes: 60
 
+      - name: Upload benchmark data to backend
+        if: always() && steps.benchmark_test.outcome == 'success'
+        uses: flagos-ai/FlagOps/actions/post-benchmark-report@main
+        with:
+          backend_url: 'http://10.1.4.167:30181/flagcicd-files/'
+          results_dir: ${{ env.PROJECT_ROOT }}/tests/functional_tests/${{ matrix.test_config.task }}/${{ matrix.test_config.model }}/test_results/${{ matrix.test_config.case }}
+          job_name: 'benchmark_${{ matrix.test_config.model }}_${{ matrix.test_config.case }}'
+          fail_on_error: 'false'
+
       - name: Upload Benchmark Test Logs
         if: always() && steps.benchmark_test.outcome == 'failure'
         uses: actions/upload-artifact@v4
