@@ -13,6 +13,7 @@ from flagscale.runner.elastic.monitor_service import MonitorService
 from flagscale.runner.launcher.launcher_base import LauncherBase
 from flagscale.runner.utils import (
     JobStatus,
+    add_decive_extra_config,
     benchmark,
     dummy_random_input,
     find_latest_stdout_log,
@@ -984,10 +985,10 @@ class SshLauncher(LauncherBase):
                 nproc_from_args = runner_config.get("nproc_per_node", None)
 
                 # Get CUDA_VISIBLE_DEVICES if set
-                # cur_envs = add_decive_extra_config(self.user_envs, resource_info["type"])
+                cur_envs = add_decive_extra_config(self.user_envs, resource_info["type"])
                 # visible_devices = cur_envs.get("CUDA_VISIBLE_DEVICES", None)
                 visible_devices = next(
-                    (v for k, v in self.user_envs.items() if k.endswith("_VISIBLE_DEVICES")), None
+                    (v for k, v in cur_envs.items() if k.endswith("_VISIBLE_DEVICES")), None
                 )
                 num_visible_devices = None
                 if visible_devices is not None and isinstance(visible_devices, str):
