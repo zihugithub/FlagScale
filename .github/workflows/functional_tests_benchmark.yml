@@ -264,6 +264,8 @@ jobs:
           backend_url: 'http://10.1.4.167:30180/flagcicd-backend/metrics/'
           results_file: ${{ env.PROJECT_ROOT }}/tests/functional_tests/${{ matrix.test_config.task }}/${{ matrix.test_config.model }}/test_results/${{ matrix.test_config.case }}/logs/benchmark_metrics.json
           job_name: 'benchmark_${{ matrix.test_config.model }}_${{ matrix.test_config.case }}'
+          git_branch: ${{ github.head_ref || github.ref_name }}
+          commit_sha: ${{ github.sha }}
           fail_on_error: 'false'
 
       - name: Upload Benchmark Test Logs
