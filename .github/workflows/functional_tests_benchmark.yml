@@ -257,9 +257,16 @@ jobs:
           python tests/test_utils/runners/parse_benchmark_output.py \
             "$LOG_FILE" "$GOLD_FILE" "$OUTPUT_FILE"
 
+      - name: Checkout action definitions
+        if: always() && steps.benchmark_test.outcome == 'success'
+        uses: actions/checkout@v4
+        with:
+          sparse-checkout: .github/actions
+          sparse-checkout-cone-mode: false
+
       - name: Upload benchmark data to backend
         if: always() && steps.benchmark_test.outcome == 'success'
-        uses: ./.github/actions/post-benchmark-report/action.yml
+        uses: ./.github/actions/post-benchmark-report
         with:
           backend_url: 'http://10.1.4.167:30180/flagcicd-backend/metrics/'
           report_path: ${{ env.PROJECT_ROOT }}/tests/functional_tests/${{ matrix.test_config.task }}/${{ matrix.test_config.model }}/test_results/${{ matrix.test_config.case }}/logs/benchmark_metrics.json
