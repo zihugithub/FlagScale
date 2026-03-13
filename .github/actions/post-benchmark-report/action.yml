@@ -78,10 +78,13 @@ runs:
         fi
         echo "job_name=$JOB_NAME" >> "$GITHUB_OUTPUT"
 
-        # Resolve pr_id
+        # Resolve pr_id (fallback to 0 for push events)
         PR_ID="${{ inputs.pr_id }}"
         if [ -z "$PR_ID" ]; then
           PR_ID="${{ github.event.pull_request.number }}"
+        fi
+        if [ -z "$PR_ID" ]; then
+          PR_ID="0"
         fi
         echo "pr_id=$PR_ID" >> "$GITHUB_OUTPUT"
 
