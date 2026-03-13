@@ -259,7 +259,7 @@ jobs:
 
       - name: Upload benchmark data to backend
         if: always() && steps.benchmark_test.outcome == 'success'
-        uses: ./.github/actions/post-benchmark-report
+        uses: ./.github/actions/post-benchmark-report/action.yml
         with:
           backend_url: 'http://10.1.4.167:30180/flagcicd-backend/metrics/'
           report_path: ${{ env.PROJECT_ROOT }}/tests/functional_tests/${{ matrix.test_config.task }}/${{ matrix.test_config.model }}/test_results/${{ matrix.test_config.case }}/logs/benchmark_metrics.json
