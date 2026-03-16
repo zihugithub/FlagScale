@@ -257,6 +257,10 @@ jobs:
           python tests/test_utils/runners/parse_benchmark_output.py \
             "$LOG_FILE" "$GOLD_FILE" "$OUTPUT_FILE"
 
+      - name: Install jq
+        if: always() && steps.benchmark_test.outcome == 'success'
+        run: apt-get update && apt-get install -y jq
+
       - name: Upload benchmark data to backend
         if: always() && steps.benchmark_test.outcome == 'success'
         uses: flagos-ai/FlagOps/actions/post-benchmark-report@main
