@@ -1,12 +1,12 @@
-name: 'Post Pytest Report'
-description: 'Upload a pytest JSON report to a backend HTTP service'
+name: 'Post benchmark Report'
+description: 'Upload a benchmark JSON report to a backend HTTP service'
 
 inputs:
   backend_url:
     description: 'Full URL of the backend metrics endpoint'
     required: true
   report_path:
-    description: 'Path to the pytest JSON report file'
+    description: 'Path to the benchmark JSON report file'
     required: true
   api_token:
     description: 'Bearer token for authentication (optional)'
@@ -19,7 +19,7 @@ inputs:
   file_type:
     description: 'File type identifier'
     required: false
-    default: 'pytest'
+    default: 'benchmark'
   is_zipped:
     description: 'Whether the file is zipped'
     required: false
@@ -40,14 +40,29 @@ inputs:
     description: 'Pull request number (auto-detected from PR events if not set)'
     required: false
     default: ''
+  header_config:
+    description: 'JSON array of header config. If not set, auto-generated from report file keys.'
+    required: false
+    default: ''
+  list_code:
+    description: 'List code identifier. If not set, auto-generated from workflow_name and job_name.'
+    required: false
+    default: ''
+  list_name:
+    description: 'List display name. If not set, auto-generated from workflow_name and job_name.'
+    required: false
+    default: ''
   fail_on_error:
     description: 'Whether to fail the step on upload error'
     required: false
     default: 'true'
 
 outputs:
+  header_status:
+    description: 'HTTP status code from the header config request'
+    value: ${{ steps.header.outputs.status }}
   status:
-    description: 'HTTP status code from the upload request'
+    description: 'HTTP status code from the data upload request'
     value: ${{ steps.upload.outputs.status }}
 
 runs:
@@ -78,14 +93,21 @@ runs:
         fi
         echo "job_name=$JOB_NAME" >> "$GITHUB_OUTPUT"
 
-        # Resolve pr_id (fallback to 0 for push events)
+        # Resolve pr_id: input > event context > GITHUB_REF extraction > fallback 0
         PR_ID="${{ inputs.pr_id }}"
         if [ -z "$PR_ID" ]; then
           PR_ID="${{ github.event.pull_request.number }}"
         fi
         if [ -z "$PR_ID" ]; then
+          # Try extracting from GITHUB_REF (e.g. refs/pull/123/merge)
+          if [[ "$GITHUB_REF" =~ ^refs/pull/([0-9]+)/ ]]; then
+            PR_ID="${BASH_REMATCH[1]}"
+          fi
+        fi
+        if [ -z "$PR_ID" ]; then
           PR_ID="0"
         fi
+        echo "Resolved pr_id: $PR_ID"
         echo "pr_id=$PR_ID" >> "$GITHUB_OUTPUT"
 
         # Validate report file exists
@@ -102,53 +124,123 @@ runs:
 
         echo "skip=false" >> "$GITHUB_OUTPUT"
 
-    - name: Upload report
-      id: upload
+    - name: Post list header config
+      id: header
       if: steps.resolve.outputs.skip != 'true'
       shell: bash
       run: |
-        # Build curl command
+        BACKEND_URL="${{ inputs.backend_url }}"
+        # Strip trailing slash
+        BACKEND_URL="${BACKEND_URL%/}"
+
+        # Build header request payload
+        HEADER_PAYLOAD=$(jq -n \
+          --arg list_code "${{ inputs.list_code }}" \
+          --arg list_name "${{ inputs.list_name }}" \
+          --argjson header_config '${{ inputs.header_config }}' \
+          '{
+            list_code: $list_code,
+            list_name: $list_name,
+            header_config: $header_config
+          }')
+
+        echo "Posting header config for list: ${{ inputs.list_code }}"
+
+        # Build curl args
         CURL_ARGS=(
-          -s
-          -X POST
+          -s -X POST
           -w '%{http_code}'
-          -o /tmp/upload_response.txt
-          -F "file_format=${{ inputs.file_format }}"
-          -F "file_type=${{ inputs.file_type }}"
-          -F "is_zipped=${{ inputs.is_zipped }}"
-          -F "git_project_name=${{ steps.resolve.outputs.project_name }}"
-          -F "workflow_name=${{ steps.resolve.outputs.workflow_name }}"
-          -F "job_name=${{ steps.resolve.outputs.job_name }}"
+          -o /tmp/header_response.txt
+          -H "Content-Type: application/json"
+          -d "$HEADER_PAYLOAD"
         )
 
-        # Always add pr_id (required by backend)
-        CURL_ARGS+=(-F "pr_id=${{ steps.resolve.outputs.pr_id }}")
-
-        # Add the file
-        CURL_ARGS+=(-F "file=@${{ inputs.report_path }}")
-
-        # Conditionally add auth header
         TOKEN="${{ inputs.api_token }}"
         if [ -n "$TOKEN" ]; then
           CURL_ARGS+=(-H "Authorization: Bearer $TOKEN")
         fi
 
-        # Execute
-        HTTP_STATUS=$(curl "${CURL_ARGS[@]}" "${{ inputs.backend_url }}")
+        HTTP_STATUS=$(curl "${CURL_ARGS[@]}" "${BACKEND_URL}/flagcicd-backend/list/header")
+
+        echo "Header config HTTP status: $HTTP_STATUS"
+        echo "status=$HTTP_STATUS" >> "$GITHUB_OUTPUT"
+
+        if [[ "$HTTP_STATUS" -lt 200 || "$HTTP_STATUS" -ge 300 ]]; then
+          echo "::error::Header config request failed with HTTP status $HTTP_STATUS"
+          echo "Response body:"
+          cat /tmp/header_response.txt
+          if [ "${{ inputs.fail_on_error }}" = "true" ]; then
+            exit 1
+          else
+            echo "::warning::Header config failed (HTTP $HTTP_STATUS), but fail_on_error is false."
+          fi
+        else
+          echo "Header config posted successfully (HTTP $HTTP_STATUS)"
+        fi
+
+    - name: Post list data
+      id: upload
+      if: steps.resolve.outputs.skip != 'true'
+      shell: bash
+      run: |
+        BACKEND_URL="${{ inputs.backend_url }}"
+        BACKEND_URL="${BACKEND_URL%/}"
+        LIST_CODE="${{ inputs.list_code }}"
+
+        # Read report file and transform into row array
+        # Input format:  { "metric_name": { "values": [...] }, ... }
+        # Output format: [ { "metric": "metric_name", "values": [...] }, ... ]
+        REPORT_CONTENT=$(jq '[to_entries[] | {metric: .key, values: .value.values}]' "${{ inputs.report_path }}")
+
+        DATA_PAYLOAD=$(jq -n \
+          --argjson items "$REPORT_CONTENT" \
+          --arg file_format "${{ inputs.file_format }}" \
+          --arg file_type "${{ inputs.file_type }}" \
+          --arg is_zipped "${{ inputs.is_zipped }}" \
+          --arg git_project_name "${{ steps.resolve.outputs.project_name }}" \
+          --arg workflow_name "${{ steps.resolve.outputs.workflow_name }}" \
+          --arg job_name "${{ steps.resolve.outputs.job_name }}" \
+          --arg pr_id "${{ steps.resolve.outputsDATA_.pr_id }}" \
+          '{
+            items: $items,
+            file_format: $file_format,
+            file_type: $file_type,
+            is_zipped: $is_zipped,
+            git_project_name: $git_project_name,
+            workflow_name: $workflow_name,
+            job_name: $job_name,
+            pr_id: $pr_id
+          }')
+
+        echo "Posting data to list: $LIST_CODE"
+
+        CURL_ARGS=(
+          -s -X POST
+          -w '%{http_code}'
+          -o /tmp/upload_response.txt
+          -H "Content-Type: application/json"
+          -d "$DATA_PAYLOAD"
+        )
+
+        TOKEN="${{ inputs.api_token }}"
+        if [ -n "$TOKEN" ]; then
+          CURL_ARGS+=(-H "Authorization: Bearer $TOKEN")
+        fi
+
+        HTTP_STATUS=$(curl "${CURL_ARGS[@]}" "${BACKEND_URL}/flagcicd-backend/list/data/${LIST_CODE}")
 
         echo "status=$HTTP_STATUS" >> "$GITHUB_OUTPUT"
-        echo "HTTP status: $HTTP_STATUS"
+        echo "Data upload HTTP status: $HTTP_STATUS"
 
-        # Check response
         if [[ "$HTTP_STATUS" -lt 200 || "$HTTP_STATUS" -ge 300 ]]; then
-          echo "::error::Upload failed with HTTP status $HTTP_STATUS"
+          echo "::error::Data upload failed with HTTP status $HTTP_STATUS"
           echo "Response body:"
           cat /tmp/upload_response.txt
           if [ "${{ inputs.fail_on_error }}" = "true" ]; then
             exit 1
           else
-            echo "::warning::Upload failed (HTTP $HTTP_STATUS), but fail_on_error is false."
+            echo "::warning::Data upload failed (HTTP $HTTP_STATUS), but fail_on_error is false."
           fi
         else
-          echo "Upload successful (HTTP $HTTP_STATUS)"
+          echo "Data upload successful (HTTP $HTTP_STATUS)"
         fi

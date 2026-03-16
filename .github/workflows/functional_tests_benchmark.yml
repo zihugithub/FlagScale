@@ -257,31 +257,35 @@ jobs:
           python tests/test_utils/runners/parse_benchmark_output.py \
             "$LOG_FILE" "$GOLD_FILE" "$OUTPUT_FILE"
 
-      # - name: Checkout action definitions
-      #   if: always() && steps.benchmark_test.outcome == 'success'
-      #   uses: actions/checkout@v4
-      #   with:
-      #     sparse-checkout: .github/actions
-      #     sparse-checkout-cone-mode: false
+      - name: Checkout action definitions
+        if: always() && steps.benchmark_test.outcome == 'success'
+        uses: actions/checkout@v4
+        with:
+          sparse-checkout: .github/actions
+          sparse-checkout-cone-mode: false
+
+      - name: Upload benchmark data to backend
+        if: always() && steps.benchmark_test.outcome == 'success'
+        uses: ./.github/actions/post-benchmark-report
+        with:
+          backend_url: 'http://10.1.4.167:30180/flagcicd-backend/metrics/'
+          report_path: ${{ env.PROJECT_ROOT }}/tests/functional_tests/${{ matrix.test_config.task }}/${{ matrix.test_config.model }}/test_results/${{ matrix.test_config.case }}/logs/benchmark_metrics.json
+          job_name: 'benchmark_${{ matrix.test_config.model }}_${{ matrix.test_config.case }}'
+          pr_id: '${{ github.event.pull_request.number }}'
+          list_code: '${{ github.job }}_${{ matrix.test_config.task }}_${{ matrix.test_config.model }}_${{ matrix.test_config.case }}'
+          list_name: 'Benchmark ${{ matrix.test_config.task }} ${{ matrix.test_config.model }} ${{ matrix.test_config.case }}'
+          header_config: '[{"field":"metric","name":"Benchmark Metric","required":true,"sortable":true,"type":"string"},{"field":"values","name":"Values","required":true,"sortable":false,"type":"array"}]'
+          fail_on_error: 'false'
+
 
       # - name: Upload benchmark data to backend
       #   if: always() && steps.benchmark_test.outcome == 'success'
-      #   uses: ./.github/actions/post-benchmark-report
+      #   uses: zihugithub/FlagOps/actions/post-benchmark-report@post-benchmark-report
       #   with:
       #     backend_url: 'http://10.1.4.167:30180/flagcicd-backend/metrics/'
       #     report_path: ${{ env.PROJECT_ROOT }}/tests/functional_tests/${{ matrix.test_config.task }}/${{ matrix.test_config.model }}/test_results/${{ matrix.test_config.case }}/logs/benchmark_metrics.json
       #     job_name: 'benchmark_${{ matrix.test_config.model }}_${{ matrix.test_config.case }}'
       #     fail_on_error: 'false'
-
-
-      - name: Upload benchmark data to backend
-        if: always() && steps.benchmark_test.outcome == 'success'
-        uses: zihugithub/FlagOps/actions/post-benchmark-report@post-benchmark-report
-        with:
-          backend_url: 'http://10.1.4.167:30180/flagcicd-backend/metrics/'
-          report_path: ${{ env.PROJECT_ROOT }}/tests/functional_tests/${{ matrix.test_config.task }}/${{ matrix.test_config.model }}/test_results/${{ matrix.test_config.case }}/logs/benchmark_metrics.json
-          job_name: 'benchmark_${{ matrix.test_config.model }}_${{ matrix.test_config.case }}'
-          fail_on_error: 'false'
 
       - name: Upload Benchmark Test Logs
         if: always() && steps.benchmark_test.outcome == 'failure'
