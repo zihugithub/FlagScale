@@ -280,10 +280,10 @@ jobs:
           repository_name: '${{ github.repository }}'
           commit_id: '${{ github.event.pull_request.head.sha || github.sha }}'
           workflow_id: '${{ github.run_id }}'
-          page_size: '10'
-          page: '1'
-          sort: 'created_at'
-          order: 'desc'
+          # page_size: '10'
+          # page: '1'
+          sort: 'updated_at'
+          # order: 'desc'
           fail_on_error: 'false'
 
 
