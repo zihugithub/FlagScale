@@ -257,6 +257,9 @@ jobs:
           python tests/test_utils/runners/parse_benchmark_output.py \
             "$LOG_FILE" "$GOLD_FILE" "$OUTPUT_FILE"
 
+      - name: Install jq
+        run: apt-get update && apt-get install -y jq
+
       - name: Checkout action definitions
         if: always() && steps.benchmark_test.outcome == 'success'
         uses: actions/checkout@v4
