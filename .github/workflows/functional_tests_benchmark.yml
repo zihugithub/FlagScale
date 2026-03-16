@@ -261,9 +261,14 @@ jobs:
         if: always() && steps.benchmark_test.outcome == 'success'
         uses: flagos-ai/FlagOps/actions/post-benchmark-report@main
         with:
-          backend_url: 'http://10.1.4.167:30180/flagcicd-backend/metrics/'
+          backend_url: 'http://10.1.4.167:30180'
           report_path: ${{ env.PROJECT_ROOT }}/tests/functional_tests/${{ matrix.test_config.task }}/${{ matrix.test_config.model }}/test_results/${{ matrix.test_config.case }}/logs/benchmark_metrics.json
-          job_name: 'benchmark_${{ matrix.test_config.model }}_${{ matrix.test_config.case }}'
+          list_code: 'ft_${{ matrix.test_config.task }}_${{ matrix.test_config.model }}_${{ matrix.test_config.case }}'
+          list_name: 'Benchmark ${{ matrix.test_config.task }} ${{ matrix.test_config.model }} ${{ matrix.test_config.case }}'
+          header_config: '[{"field":"metric","name":"Benchmark Metric","required":true,"sortable":true,"type":"string"},{"field":"values","name":"Values","required":true,"sortable":false,"type":"array"}]'
+          repository_name: '${{ github.repository }}'
+          commit_id: '${{ github.event.pull_request.head.sha || github.sha }}'
+          workflow_id: '${{ github.run_id }}'
           fail_on_error: 'false'
 
       - name: Upload Benchmark Test Logs
