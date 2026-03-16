@@ -11,7 +11,6 @@ import json
 import re
 import sys
 
-
 # Default benchmark metric keys if no gold values file is provided
 DEFAULT_METRIC_KEYS = [
     "elapsed time per iteration (ms):",
@@ -36,9 +35,7 @@ def extract_metrics_from_log(lines, metric_keys):
             part = part.strip()
             for key in metric_keys:
                 if part.startswith(key.rstrip(":")):
-                    match = re.search(
-                        r":\s*([+-]?\d+\.?\d*(?:[eE][+-]?\d+)?)", part
-                    )
+                    match = re.search(r":\s*([+-]?\d+\.?\d*(?:[eE][+-]?\d+)?)", part)
                     if match:
                         try:
                             results[key].append(float(match.group(1)))
