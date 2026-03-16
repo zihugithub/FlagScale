@@ -273,6 +273,7 @@ jobs:
       #     job_name: 'benchmark_${{ matrix.test_config.model }}_${{ matrix.test_config.case }}'
       #     fail_on_error: 'false'
 
+
       - name: Upload benchmark data to backend
         if: always() && steps.benchmark_test.outcome == 'success'
         uses: zihugithub/FlagOps/actions/post-benchmark-report@post-benchmark-report
