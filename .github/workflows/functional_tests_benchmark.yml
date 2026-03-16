@@ -280,21 +280,7 @@ jobs:
           repository_name: '${{ github.repository }}'
           commit_id: '${{ github.event.pull_request.head.sha || github.sha }}'
           workflow_id: '${{ github.run_id }}'
-          # page_size: '10'
-          # page: '1'
-          sort: 'created_at'
-          # order: 'desc'
           fail_on_error: 'false'
-
-
-      # - name: Upload benchmark data to backend
-      #   if: always() && steps.benchmark_test.outcome == 'success'
-      #   uses: zihugithub/FlagOps/actions/post-benchmark-report@post-benchmark-report
-      #   with:
-      #     backend_url: 'http://10.1.4.167:30180/flagcicd-backend/metrics/'
-      #     report_path: ${{ env.PROJECT_ROOT }}/tests/functional_tests/${{ matrix.test_config.task }}/${{ matrix.test_config.model }}/test_results/${{ matrix.test_config.case }}/logs/benchmark_metrics.json
-      #     job_name: 'benchmark_${{ matrix.test_config.model }}_${{ matrix.test_config.case }}'
-      #     fail_on_error: 'false'
 
       - name: Upload Benchmark Test Logs
         if: always() && steps.benchmark_test.outcome == 'failure'

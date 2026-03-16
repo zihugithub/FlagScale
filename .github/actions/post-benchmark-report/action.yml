@@ -23,7 +23,7 @@ inputs:
     description: 'JSON array of header config for custom table columns'
     required: true
   repository_name:
-    description: 'Repository name in host/owner/repo format (defaults to github.repository)'
+    description: 'Repository name (defaults to github.repository)'
     required: false
     default: ''
   workflow_id:
@@ -76,6 +76,8 @@ runs:
       id: resolve
       shell: bash
       run: |
+        set -euo pipefail
+
         # Resolve repository_name
         REPO_NAME="${{ inputs.repository_name }}"
         if [ -z "$REPO_NAME" ]; then
@@ -110,7 +112,7 @@ runs:
           if [ "${{ inputs.fail_on_error }}" = "true" ]; then
             exit 1
           else
-            echo "::warning::Report file not found, skipping upload."
+            echo "::warning::Report file not found, skipping."
             echo "skip=true" >> "$GITHUB_OUTPUT"
             exit 0
           fi
@@ -118,11 +120,21 @@ runs:
 
         echo "skip=false" >> "$GITHUB_OUTPUT"
 
+        echo "=== Resolved inputs ==="
+        echo "  repository_name: $REPO_NAME"
+        echo "  workflow_id:     $WORKFLOW_ID"
+        echo "  commit_id:       $COMMIT_ID"
+        echo "  list_code:       ${{ inputs.list_code }}"
+        echo "  list_name:       $LIST_NAME"
+        echo "  report_path:     ${{ inputs.report_path }}"
+
     - name: Post list header config
       id: header
       if: steps.resolve.outputs.skip != 'true'
       shell: bash
       run: |
+        set -euo pipefail
+
         BACKEND_URL="${{ inputs.backend_url }}"
         BACKEND_URL="${BACKEND_URL%/}"
 
@@ -136,8 +148,10 @@ runs:
             header_config: $header_config
           }')
 
-        echo "Posting header config for list: ${{ inputs.list_code }}"
-        echo "Payload: $HEADER_PAYLOAD"
+        echo "=== Post header config ==="
+        echo "URL: ${BACKEND_URL}/flagcicd-backend/list/header"
+        echo "Payload:"
+        echo "$HEADER_PAYLOAD" | jq .
 
         CURL_ARGS=(
           -s -X POST
@@ -154,21 +168,19 @@ runs:
 
         HTTP_STATUS=$(curl "${CURL_ARGS[@]}" "${BACKEND_URL}/flagcicd-backend/list/header")
 
-        echo "Header config HTTP status: $HTTP_STATUS"
-        echo "Response body:"
+        echo "HTTP status: $HTTP_STATUS"
+        echo "Response:"
         cat /tmp/header_response.txt
         echo ""
         echo "status=$HTTP_STATUS" >> "$GITHUB_OUTPUT"
 
         if [[ "$HTTP_STATUS" -lt 200 || "$HTTP_STATUS" -ge 300 ]]; then
-          echo "::error::Header config request failed with HTTP status $HTTP_STATUS"
+          echo "::error::Header config request failed (HTTP $HTTP_STATUS)"
           if [ "${{ inputs.fail_on_error }}" = "true" ]; then
             exit 1
-          else
-            echo "::warning::Header config failed (HTTP $HTTP_STATUS), but fail_on_error is false."
           fi
         else
-          echo "Header config posted successfully (HTTP $HTTP_STATUS)"
+          echo "Header config posted successfully"
         fi
 
     - name: Post list data
@@ -176,6 +188,8 @@ runs:
       if: steps.resolve.outputs.skip != 'true'
       shell: bash
       run: |
+        set -euo pipefail
+
         BACKEND_URL="${{ inputs.backend_url }}"
         BACKEND_URL="${BACKEND_URL%/}"
         LIST_CODE="${{ inputs.list_code }}"
@@ -197,8 +211,11 @@ runs:
             commit_id: $commit_id
           }')
 
-        echo "Posting data to list: $LIST_CODE"
+        echo "=== Post list data ==="
+        echo "URL: ${BACKEND_URL}/flagcicd-backend/list/data/${LIST_CODE}"
         echo "Items count: $(echo "$ITEMS" | jq length)"
+        echo "Payload (metadata):"
+        echo "$DATA_PAYLOAD" | jq '{repository_name, workflow_id, commit_id, items_count: (.items | length)}'
 
         CURL_ARGS=(
           -s -X POST
@@ -215,57 +232,43 @@ runs:
 
         HTTP_STATUS=$(curl "${CURL_ARGS[@]}" "${BACKEND_URL}/flagcicd-backend/list/data/${LIST_CODE}")
 
-        echo "Data upload HTTP status: $HTTP_STATUS"
-        echo "Response body:"
+        echo "HTTP status: $HTTP_STATUS"
+        echo "Response:"
         cat /tmp/upload_response.txt
         echo ""
         echo "status=$HTTP_STATUS" >> "$GITHUB_OUTPUT"
 
         if [[ "$HTTP_STATUS" -lt 200 || "$HTTP_STATUS" -ge 300 ]]; then
-          echo "::error::Data upload failed with HTTP status $HTTP_STATUS"
+          echo "::error::Data upload failed (HTTP $HTTP_STATUS)"
           if [ "${{ inputs.fail_on_error }}" = "true" ]; then
             exit 1
-          else
-            echo "::warning::Data upload failed (HTTP $HTTP_STATUS), but fail_on_error is false."
           fi
         else
-          echo "Data upload successful (HTTP $HTTP_STATUS)"
+          echo "Data upload successful"
         fi
 
     - name: Query list data
       id: query
-      if: steps.resolve.outputs.skip != 'true'
+      if: steps.resolve.outputs.skip != 'true' && steps.upload.outputs.status >= '200' && steps.upload.outputs.status < '300'
       shell: bash
       run: |
+        set -uo pipefail
+
         BACKEND_URL="${{ inputs.backend_url }}"
         BACKEND_URL="${BACKEND_URL%/}"
         LIST_CODE="${{ inputs.list_code }}"
 
-        # Build query parameters
+        # Build query parameters (pagination + sorting only, no metadata filters)
         QUERY_PARAMS="page_size=${{ inputs.page_size }}&page=${{ inputs.page }}&sort=${{ inputs.sort }}&order=${{ inputs.order }}"
 
-        REPO_NAME="${{ steps.resolve.outputs.repository_name }}"
-        if [ -n "$REPO_NAME" ]; then
-          QUERY_PARAMS="${QUERY_PARAMS}&repository_name=${REPO_NAME}"
-        fi
-
-        WORKFLOW_ID="${{ steps.resolve.outputs.workflow_id }}"
-        if [ -n "$WORKFLOW_ID" ]; then
-          QUERY_PARAMS="${QUERY_PARAMS}&workflow_id=${WORKFLOW_ID}"
-        fi
-
-        COMMIT_ID="${{ steps.resolve.outputs.commit_id }}"
-        if [ -n "$COMMIT_ID" ]; then
-          QUERY_PARAMS="${QUERY_PARAMS}&commit_id=${COMMIT_ID}"
-        fi
-
         QUERY_URL="${BACKEND_URL}/flagcicd-backend/list/data/${LIST_CODE}?${QUERY_PARAMS}"
-        echo "Querying list data: $QUERY_URL"
+        echo "=== Query list data ==="
+        echo "URL: $QUERY_URL"
 
         CURL_ARGS=(
           -s -X GET
           -w '\n%{http_code}'
-          -H "Content-Type: application/json"
+          -H "Accept: application/json"
         )
 
         TOKEN="${{ inputs.api_token }}"
@@ -279,18 +282,19 @@ runs:
         HTTP_STATUS=$(echo "$RESPONSE" | tail -n1)
         RESPONSE_BODY=$(echo "$RESPONSE" | sed '$d')
 
-        echo "Query HTTP status: $HTTP_STATUS"
-        echo "Response body: $RESPONSE_BODY"
+        echo "HTTP status: $HTTP_STATUS"
+        echo "Response:"
+        echo "$RESPONSE_BODY" | jq . 2>/dev/null || echo "$RESPONSE_BODY"
         echo "status=$HTTP_STATUS" >> "$GITHUB_OUTPUT"
 
-        # Store query result (escape for GITHUB_OUTPUT)
+        # Store query result using heredoc delimiter for GITHUB_OUTPUT
         EOF_MARKER=$(dd if=/dev/urandom bs=15 count=1 status=none | base64)
         echo "result<<${EOF_MARKER}" >> "$GITHUB_OUTPUT"
         echo "$RESPONSE_BODY" >> "$GITHUB_OUTPUT"
         echo "${EOF_MARKER}" >> "$GITHUB_OUTPUT"
 
         if [[ "$HTTP_STATUS" -lt 200 || "$HTTP_STATUS" -ge 300 ]]; then
-          echo "::warning::Query failed with HTTP status $HTTP_STATUS"
+          echo "::warning::Query failed (HTTP $HTTP_STATUS)"
         else
-          echo "Query successful (HTTP $HTTP_STATUS)"
+          echo "Query successful"
         fi
