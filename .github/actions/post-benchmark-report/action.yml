@@ -174,13 +174,19 @@ runs:
         echo ""
         echo "status=$HTTP_STATUS" >> "$GITHUB_OUTPUT"
 
-        if [[ "$HTTP_STATUS" -lt 200 || "$HTTP_STATUS" -ge 300 ]]; then
-          echo "::error::Header config request failed (HTTP $HTTP_STATUS)"
-          if [ "${{ inputs.fail_on_error }}" = "true" ]; then
-            exit 1
-          fi
-        else
+        if [[ "$HTTP_STATUS" -ge 200 && "$HTTP_STATUS" -lt 300 ]]; then
           echo "Header config posted successfully"
+        else
+          # Check if the error is "list code already exists" — this is expected on subsequent runs
+          RESPONSE_BODY=$(cat /tmp/header_response.txt)
+          if echo "$RESPONSE_BODY" | grep -q "已存在"; then
+            echo "::notice::Header config already exists for list '${{ inputs.list_code }}', skipping."
+          else
+            echo "::error::Header config request failed (HTTP $HTTP_STATUS)"
+            if [ "${{ inputs.fail_on_error }}" = "true" ]; then
+              exit 1
+            fi
+          fi
         fi
 
     - name: Post list data
