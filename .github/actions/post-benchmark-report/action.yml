@@ -1,9 +1,9 @@
 name: 'Post benchmark Report'
-description: 'Upload a benchmark JSON report to a backend HTTP service'
+description: 'Upload benchmark data to backend and query list data with pagination and sorting'
 
 inputs:
   backend_url:
-    description: 'Full URL of the backend metrics endpoint'
+    description: 'Backend base URL (e.g. http://host:port)'
     required: true
   report_path:
     description: 'Path to the benchmark JSON report file'
@@ -12,48 +12,46 @@ inputs:
     description: 'Bearer token for authentication (optional)'
     required: false
     default: ''
-  file_format:
-    description: 'File format identifier'
-    required: false
-    default: 'json'
-  file_type:
-    description: 'File type identifier'
-    required: false
-    default: 'benchmark'
-  is_zipped:
-    description: 'Whether the file is zipped'
-    required: false
-    default: 'false'
-  git_project_name:
-    description: 'Project name (defaults to github.repository)'
-    required: false
-    default: ''
-  workflow_name:
-    description: 'Workflow name (defaults to github.workflow)'
-    required: false
-    default: ''
-  job_name:
-    description: 'Job name (defaults to github.job)'
-    required: false
-    default: ''
-  pr_id:
-    description: 'Pull request number (auto-detected from PR events if not set)'
+  list_code:
+    description: 'List code identifier'
+    required: true
+  list_name:
+    description: 'List display name'
     required: false
     default: ''
   header_config:
-    description: 'JSON array of header config. If not set, auto-generated from report file keys.'
+    description: 'JSON array of header config for custom table columns'
+    required: true
+  repository_name:
+    description: 'Repository name in host/owner/repo format (defaults to github.repository)'
     required: false
     default: ''
-  list_code:
-    description: 'List code identifier. If not set, auto-generated from workflow_name and job_name.'
+  workflow_id:
+    description: 'Workflow run ID (defaults to github.run_id)'
     required: false
     default: ''
-  list_name:
-    description: 'List display name. If not set, auto-generated from workflow_name and job_name.'
+  commit_id:
+    description: 'GitHub commit SHA (defaults to github.sha)'
     required: false
     default: ''
+  page_size:
+    description: 'Number of items per page for query (default: 10)'
+    required: false
+    default: '10'
+  page:
+    description: 'Page number for query (default: 1)'
+    required: false
+    default: '1'
+  sort:
+    description: 'Sort field for query (e.g. created_at, updated_at)'
+    required: false
+    default: 'created_at'
+  order:
+    description: 'Sort direction for query (asc or desc)'
+    required: false
+    default: 'desc'
   fail_on_error:
-    description: 'Whether to fail the step on upload error'
+    description: 'Whether to fail the step on error'
     required: false
     default: 'true'
 
@@ -61,9 +59,15 @@ outputs:
   header_status:
     description: 'HTTP status code from the header config request'
     value: ${{ steps.header.outputs.status }}
-  status:
+  upload_status:
     description: 'HTTP status code from the data upload request'
     value: ${{ steps.upload.outputs.status }}
+  query_status:
+    description: 'HTTP status code from the data query request'
+    value: ${{ steps.query.outputs.status }}
+  query_result:
+    description: 'JSON response from the data query request'
+    value: ${{ steps.query.outputs.result }}
 
 runs:
   using: 'composite'
@@ -72,43 +76,33 @@ runs:
       id: resolve
       shell: bash
       run: |
-        # Resolve git_project_name
-        PROJECT_NAME="${{ inputs.git_project_name }}"
-        if [ -z "$PROJECT_NAME" ]; then
-          PROJECT_NAME="${{ github.repository }}"
+        # Resolve repository_name
+        REPO_NAME="${{ inputs.repository_name }}"
+        if [ -z "$REPO_NAME" ]; then
+          REPO_NAME="${{ github.repository }}"
         fi
-        echo "project_name=$PROJECT_NAME" >> "$GITHUB_OUTPUT"
+        echo "repository_name=$REPO_NAME" >> "$GITHUB_OUTPUT"
 
-        # Resolve workflow_name
-        WORKFLOW_NAME="${{ inputs.workflow_name }}"
-        if [ -z "$WORKFLOW_NAME" ]; then
-          WORKFLOW_NAME="${{ github.workflow }}"
+        # Resolve workflow_id
+        WORKFLOW_ID="${{ inputs.workflow_id }}"
+        if [ -z "$WORKFLOW_ID" ]; then
+          WORKFLOW_ID="${{ github.run_id }}"
         fi
-        echo "workflow_name=$WORKFLOW_NAME" >> "$GITHUB_OUTPUT"
+        echo "workflow_id=$WORKFLOW_ID" >> "$GITHUB_OUTPUT"
 
-        # Resolve job_name
-        JOB_NAME="${{ inputs.job_name }}"
-        if [ -z "$JOB_NAME" ]; then
-          JOB_NAME="${{ github.job }}"
+        # Resolve commit_id
+        COMMIT_ID="${{ inputs.commit_id }}"
+        if [ -z "$COMMIT_ID" ]; then
+          COMMIT_ID="${{ github.sha }}"
         fi
-        echo "job_name=$JOB_NAME" >> "$GITHUB_OUTPUT"
+        echo "commit_id=$COMMIT_ID" >> "$GITHUB_OUTPUT"
 
-        # Resolve pr_id: input > event context > GITHUB_REF extraction > fallback 0
-        PR_ID="${{ inputs.pr_id }}"
-        if [ -z "$PR_ID" ]; then
-          PR_ID="${{ github.event.pull_request.number }}"
+        # Resolve list_name
+        LIST_NAME="${{ inputs.list_name }}"
+        if [ -z "$LIST_NAME" ]; then
+          LIST_NAME="${{ inputs.list_code }}"
         fi
-        if [ -z "$PR_ID" ]; then
-          # Try extracting from GITHUB_REF (e.g. refs/pull/123/merge)
-          if [[ "$GITHUB_REF" =~ ^refs/pull/([0-9]+)/ ]]; then
-            PR_ID="${BASH_REMATCH[1]}"
-          fi
-        fi
-        if [ -z "$PR_ID" ]; then
-          PR_ID="0"
-        fi
-        echo "Resolved pr_id: $PR_ID"
-        echo "pr_id=$PR_ID" >> "$GITHUB_OUTPUT"
+        echo "list_name=$LIST_NAME" >> "$GITHUB_OUTPUT"
 
         # Validate report file exists
         if [ ! -f "${{ inputs.report_path }}" ]; then
@@ -130,13 +124,11 @@ runs:
       shell: bash
       run: |
         BACKEND_URL="${{ inputs.backend_url }}"
-        # Strip trailing slash
         BACKEND_URL="${BACKEND_URL%/}"
 
-        # Build header request payload
         HEADER_PAYLOAD=$(jq -n \
           --arg list_code "${{ inputs.list_code }}" \
-          --arg list_name "${{ inputs.list_name }}" \
+          --arg list_name "${{ steps.resolve.outputs.list_name }}" \
           --argjson header_config '${{ inputs.header_config }}' \
           '{
             list_code: $list_code,
@@ -145,8 +137,8 @@ runs:
           }')
 
         echo "Posting header config for list: ${{ inputs.list_code }}"
+        echo "Payload: $HEADER_PAYLOAD"
 
-        # Build curl args
         CURL_ARGS=(
           -s -X POST
           -w '%{http_code}'
@@ -163,12 +155,13 @@ runs:
         HTTP_STATUS=$(curl "${CURL_ARGS[@]}" "${BACKEND_URL}/flagcicd-backend/list/header")
 
         echo "Header config HTTP status: $HTTP_STATUS"
+        echo "Response body:"
+        cat /tmp/header_response.txt
+        echo ""
         echo "status=$HTTP_STATUS" >> "$GITHUB_OUTPUT"
 
         if [[ "$HTTP_STATUS" -lt 200 || "$HTTP_STATUS" -ge 300 ]]; then
           echo "::error::Header config request failed with HTTP status $HTTP_STATUS"
-          echo "Response body:"
-          cat /tmp/header_response.txt
           if [ "${{ inputs.fail_on_error }}" = "true" ]; then
             exit 1
           else
@@ -187,32 +180,19 @@ runs:
         BACKEND_URL="${BACKEND_URL%/}"
         LIST_CODE="${{ inputs.list_code }}"
 
-        # Read report file and transform into row array
+        # Read report file and transform into items array
         # Input format:  { "metric_name": { "values": [...] }, ... }
         # Output format: [ { "metric": "metric_name", "values": [...] }, ... ]
-        REPORT_CONTENT=$(jq '[to_entries[] | {metric: .key, values: .value.values}]' "${{ inputs.report_path }}")
+        ITEMS=$(jq '[to_entries[] | {metric: .key, values: .value.values}]' "${{ inputs.report_path }}")
 
         DATA_PAYLOAD=$(jq -n \
-          --argjson items "$REPORT_CONTENT" \
-          --arg file_format "${{ inputs.file_format }}" \
-          --arg file_type "${{ inputs.file_type }}" \
-          --arg is_zipped "${{ inputs.is_zipped }}" \
-          --arg git_project_name "${{ steps.resolve.outputs.project_name }}" \
-          --arg workflow_name "${{ steps.resolve.outputs.workflow_name }}" \
-          --arg job_name "${{ steps.resolve.outputs.job_name }}" \
-          --arg pr_id "${{ steps.resolve.outputsDATA_.pr_id }}" \
+          --argjson items "$ITEMS" \
           '{
-            items: $items,
-            file_format: $file_format,
-            file_type: $file_type,
-            is_zipped: $is_zipped,
-            git_project_name: $git_project_name,
-            workflow_name: $workflow_name,
-            job_name: $job_name,
-            pr_id: $pr_id
+            items: $items
           }')
 
         echo "Posting data to list: $LIST_CODE"
+        echo "Items count: $(echo "$ITEMS" | jq length)"
 
         CURL_ARGS=(
           -s -X POST
@@ -229,13 +209,14 @@ runs:
 
         HTTP_STATUS=$(curl "${CURL_ARGS[@]}" "${BACKEND_URL}/flagcicd-backend/list/data/${LIST_CODE}")
 
-        echo "status=$HTTP_STATUS" >> "$GITHUB_OUTPUT"
         echo "Data upload HTTP status: $HTTP_STATUS"
+        echo "Response body:"
+        cat /tmp/upload_response.txt
+        echo ""
+        echo "status=$HTTP_STATUS" >> "$GITHUB_OUTPUT"
 
         if [[ "$HTTP_STATUS" -lt 200 || "$HTTP_STATUS" -ge 300 ]]; then
           echo "::error::Data upload failed with HTTP status $HTTP_STATUS"
-          echo "Response body:"
-          cat /tmp/upload_response.txt
           if [ "${{ inputs.fail_on_error }}" = "true" ]; then
             exit 1
           else
@@ -243,4 +224,67 @@ runs:
           fi
         else
           echo "Data upload successful (HTTP $HTTP_STATUS)"
+        fi
+
+    - name: Query list data
+      id: query
+      if: steps.resolve.outputs.skip != 'true'
+      shell: bash
+      run: |
+        BACKEND_URL="${{ inputs.backend_url }}"
+        BACKEND_URL="${BACKEND_URL%/}"
+        LIST_CODE="${{ inputs.list_code }}"
+
+        # Build query parameters
+        QUERY_PARAMS="page_size=${{ inputs.page_size }}&page=${{ inputs.page }}&sort=${{ inputs.sort }}&order=${{ inputs.order }}"
+
+        REPO_NAME="${{ steps.resolve.outputs.repository_name }}"
+        if [ -n "$REPO_NAME" ]; then
+          QUERY_PARAMS="${QUERY_PARAMS}&repository_name=${REPO_NAME}"
+        fi
+
+        WORKFLOW_ID="${{ steps.resolve.outputs.workflow_id }}"
+        if [ -n "$WORKFLOW_ID" ]; then
+          QUERY_PARAMS="${QUERY_PARAMS}&workflow_id=${WORKFLOW_ID}"
+        fi
+
+        COMMIT_ID="${{ steps.resolve.outputs.commit_id }}"
+        if [ -n "$COMMIT_ID" ]; then
+          QUERY_PARAMS="${QUERY_PARAMS}&commit_id=${COMMIT_ID}"
+        fi
+
+        QUERY_URL="${BACKEND_URL}/flagcicd-backend/list/data/${LIST_CODE}?${QUERY_PARAMS}"
+        echo "Querying list data: $QUERY_URL"
+
+        CURL_ARGS=(
+          -s -X GET
+          -w '\n%{http_code}'
+          -H "Content-Type: application/json"
+        )
+
+        TOKEN="${{ inputs.api_token }}"
+        if [ -n "$TOKEN" ]; then
+          CURL_ARGS+=(-H "Authorization: Bearer $TOKEN")
+        fi
+
+        RESPONSE=$(curl "${CURL_ARGS[@]}" "$QUERY_URL")
+
+        # Extract HTTP status (last line) and body (everything else)
+        HTTP_STATUS=$(echo "$RESPONSE" | tail -n1)
+        RESPONSE_BODY=$(echo "$RESPONSE" | sed '$d')
+
+        echo "Query HTTP status: $HTTP_STATUS"
+        echo "Response body: $RESPONSE_BODY"
+        echo "status=$HTTP_STATUS" >> "$GITHUB_OUTPUT"
+
+        # Store query result (escape for GITHUB_OUTPUT)
+        EOF_MARKER=$(dd if=/dev/urandom bs=15 count=1 status=none | base64)
+        echo "result<<${EOF_MARKER}" >> "$GITHUB_OUTPUT"
+        echo "$RESPONSE_BODY" >> "$GITHUB_OUTPUT"
+        echo "${EOF_MARKER}" >> "$GITHUB_OUTPUT"
+
+        if [[ "$HTTP_STATUS" -lt 200 || "$HTTP_STATUS" -ge 300 ]]; then
+          echo "::warning::Query failed with HTTP status $HTTP_STATUS"
+        else
+          echo "Query successful (HTTP $HTTP_STATUS)"
         fi
