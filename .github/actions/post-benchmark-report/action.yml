@@ -187,8 +187,14 @@ runs:
 
         DATA_PAYLOAD=$(jq -n \
           --argjson items "$ITEMS" \
+          --arg repository_name "${{ steps.resolve.outputs.repository_name }}" \
+          --arg workflow_id "${{ steps.resolve.outputs.workflow_id }}" \
+          --arg commit_id "${{ steps.resolve.outputs.commit_id }}" \
           '{
-            items: $items
+            items: $items,
+            repository_name: $repository_name,
+            workflow_id: $workflow_id,
+            commit_id: $commit_id
           }')
 
         echo "Posting data to list: $LIST_CODE"
