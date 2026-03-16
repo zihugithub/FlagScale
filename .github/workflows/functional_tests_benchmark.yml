@@ -277,6 +277,8 @@ jobs:
           list_code: '${{ github.job }}_${{ matrix.test_config.task }}_${{ matrix.test_config.model }}_${{ matrix.test_config.case }}'
           list_name: 'Benchmark ${{ matrix.test_config.task }} ${{ matrix.test_config.model }} ${{ matrix.test_config.case }}'
           header_config: '[{"field":"metric","name":"Benchmark Metric","required":true,"sortable":true,"type":"string"},{"field":"values","name":"Values","required":true,"sortable":false,"type":"array"}]'
+          commit_id: '${{ github.event.pull_request.head.sha || github.sha }}'
+          workflow_id: '${{ github.run_id }}'
           page_size: '10'
           page: '1'
           sort: 'created_at'
