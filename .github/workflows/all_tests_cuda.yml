@@ -1,11 +1,6 @@
 name: cuda_tests
 
 on:
-  # Trigger after Build Docker Images - CUDA succeeds
-  workflow_run:
-    workflows: ["Build Docker Images - CUDA"]
-    types: [completed]
-
   push:
     branches: ["main"]
     paths-ignore:
@@ -22,6 +17,12 @@ on:
       - 'tools/install/**'
       - 'requirements/**'
       - '.github/workflows/build_image_cuda.yml'
+
+  # Trigger after Build Docker Images - CUDA succeeds
+  workflow_run:
+    workflows: ["Build Docker Images - CUDA"]
+    types: [completed]
+
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}-${{ github.actor }}
