@@ -1,10 +1,10 @@
 name: cuda_tests
 
 on:
-  # Trigger after Build Docker Images - CUDA succeeds
-  workflow_run:
-    workflows: ["Build Docker Images - CUDA"]
-    types: [completed]
+  # # Trigger after Build Docker Images - CUDA succeeds
+  # workflow_run:
+  #   workflows: ["Build Docker Images - CUDA"]
+  #   types: [completed]
 
   push:
     branches: ["main"]
