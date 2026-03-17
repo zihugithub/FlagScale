@@ -191,27 +191,27 @@ jobs:
 
           echo "PKG_MGR: ${{ env.PKG_MGR }}"
 
-      - name: Build Docker image
-        uses: docker/build-push-action@v6
-        with:
-          context: .
-          file: docker/cuda/Dockerfile.${{ matrix.task }}
-          target: ${{ needs.prepare.outputs.target }}
-          load: true
-          tags: ${{ steps.meta.outputs.tags }}
-          build-args: |
-            BASE_IMAGE=${{ steps.meta.outputs.base_image }}
-            CUDA_VERSION=${{ env.CUDA_VERSION }}
-            UBUNTU_VERSION=${{ env.UBUNTU_VERSION }}
-            PYTHON_VERSION=${{ env.PYTHON_VERSION }}
-            UV_VERSION=${{ env.UV_VERSION }}
-            PYTORCH_INDEX=${{ steps.meta.outputs.pytorch_index }}
-            PKG_MGR=${{ env.PKG_MGR }}
-          no-cache: ${{ needs.prepare.outputs.no_cache == 'true' }}
+      # - name: Build Docker image
+      #   uses: docker/build-push-action@v6
+      #   with:
+      #     context: .
+      #     file: docker/cuda/Dockerfile.${{ matrix.task }}
+      #     target: ${{ needs.prepare.outputs.target }}
+      #     load: true
+      #     tags: ${{ steps.meta.outputs.tags }}
+      #     build-args: |
+      #       BASE_IMAGE=${{ steps.meta.outputs.base_image }}
+      #       CUDA_VERSION=${{ env.CUDA_VERSION }}
+      #       UBUNTU_VERSION=${{ env.UBUNTU_VERSION }}
+      #       PYTHON_VERSION=${{ env.PYTHON_VERSION }}
+      #       UV_VERSION=${{ env.UV_VERSION }}
+      #       PYTORCH_INDEX=${{ steps.meta.outputs.pytorch_index }}
+      #       PKG_MGR=${{ env.PKG_MGR }}
+      #     no-cache: ${{ needs.prepare.outputs.no_cache == 'true' }}
 
-      - name: Push Docker image
-        if: needs.prepare.outputs.push == 'true'
-        run: docker push ${{ steps.meta.outputs.local_tag }}
+      # - name: Push Docker image
+      #   if: needs.prepare.outputs.push == 'true'
+      #   run: docker push ${{ steps.meta.outputs.local_tag }}
 
       - name: Export image tag for config update
         id: export
@@ -248,8 +248,10 @@ jobs:
           set -euo pipefail
           CONFIG_FILE=".github/configs/cuda.yml"
 
-          TRAIN_TAG="${{ needs.build.outputs.train_tag }}"
-          INFERENCE_TAG="${{ needs.build.outputs.inference_tag }}"
+          # TRAIN_TAG="${{ needs.build.outputs.train_tag }}"
+          # INFERENCE_TAG="${{ needs.build.outputs.inference_tag }}"
+          TRAIN_TAG="localhost:5000/flagscale-train:dev-cu128-py3.12-20260313153407"
+          INFERENCE_TAG="localhost:5000/flagscale-inference:dev-cu128-py3.12-20260313095551"
 
           if [ -n "$TRAIN_TAG" ]; then
             echo "Updating ci_train_image to: $TRAIN_TAG"
