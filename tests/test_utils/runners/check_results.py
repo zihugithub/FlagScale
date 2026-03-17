@@ -451,8 +451,8 @@ def test_serve_equal(path, task, model, case):
                 print("[Serve] Gold value check PASSED")
 
 
-@pytest.mark.usefixtures("path", "task", "model", "case")
-def test_benchmark_equal(path, task, model, case):
+@pytest.mark.usefixtures("path", "task", "model", "case", "platform", "device")
+def test_benchmark_equal(path, task, model, case, platform, device):
     """
     Compare performance metrics from benchmark run against baseline gold values.
 
@@ -480,6 +480,35 @@ def test_benchmark_equal(path, task, model, case):
 
     with open(gold_value_path, "r") as f:
         gold_result_json = json.load(f)
+
+    # Extract platform/device-specific gold values (structure: {platform: {device: {metrics}}})
+    def _is_metric_keys(keys):
+        """Metric keys contain ':', device/platform names don't."""
+        return any(":" in k for k in keys)
+
+    top_keys = list(gold_result_json.keys())
+    if top_keys and not _is_metric_keys(top_keys):
+        # Top level is platform classification
+        p = platform if platform and platform != "none" else None
+        assert p, (
+            f"Gold values are platform-classified ({top_keys}) but no --platform was specified"
+        )
+        assert p in gold_result_json, (
+            f"Platform '{p}' not found in gold values. Available: {top_keys}"
+        )
+        gold_result_json = gold_result_json[p]
+
+        # Second level is device classification
+        device_keys = list(gold_result_json.keys())
+        if device_keys and not _is_metric_keys(device_keys):
+            d = device if device and device != "none" else None
+            assert d, (
+                f"Gold values are device-classified ({device_keys}) but no --device was specified"
+            )
+            assert d in gold_result_json, (
+                f"Device '{d}' not found in gold values. Available: {device_keys}"
+            )
+            gold_result_json = gold_result_json[d]
 
     metric_keys = list(gold_result_json.keys())
 

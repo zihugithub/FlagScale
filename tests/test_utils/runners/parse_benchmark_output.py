@@ -1,7 +1,7 @@
 """Parse host_0_localhost.output log file and produce benchmark.json.
 
 Usage:
-    python parse_benchmark_output.py <log_file> <gold_values_file> <output_json>
+    python parse_benchmark_output.py <log_file> <gold_values_file> [output_json] [platform] [device]
 
 The script extracts benchmark metrics from the training log using metric keys
 defined in the gold values file, then writes a structured JSON report.
@@ -51,7 +51,7 @@ def extract_metrics_from_log(lines, metric_keys):
 def main():
     if len(sys.argv) < 3:
         print(
-            f"Usage: {sys.argv[0]} <log_file> <gold_values_file> [output_json]",
+            f"Usage: {sys.argv[0]} <log_file> <gold_values_file> [output_json] [platform] [device]",
             file=sys.stderr,
         )
         sys.exit(1)
@@ -59,6 +59,8 @@ def main():
     log_file = sys.argv[1]
     gold_values_file = sys.argv[2]
     output_json = sys.argv[3] if len(sys.argv) > 3 else "benchmark.json"
+    platform = sys.argv[4] if len(sys.argv) > 4 else None
+    device = sys.argv[5] if len(sys.argv) > 5 else None
 
     # Read log file
     with open(log_file, "r") as f:
@@ -68,6 +70,20 @@ def main():
     try:
         with open(gold_values_file, "r") as f:
             gold_data = json.load(f)
+        # Handle platform/device-classified gold values structure
+        # Drill down through non-metric levels (platform -> device -> metrics)
+        def _is_metric_keys(keys):
+            return any(":" in k for k in keys)
+
+        if platform and platform in gold_data:
+            gold_data = gold_data[platform]
+        elif not _is_metric_keys(gold_data.keys()):
+            gold_data = gold_data[next(iter(gold_data))]
+
+        if device and device in gold_data:
+            gold_data = gold_data[device]
+        elif not _is_metric_keys(gold_data.keys()):
+            gold_data = gold_data[next(iter(gold_data))]
         metric_keys = list(gold_data.keys())
     except (FileNotFoundError, json.JSONDecodeError):
         print(
