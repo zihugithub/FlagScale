@@ -204,9 +204,9 @@ jobs:
       #       PKG_MGR=${{ env.PKG_MGR }}
       #     no-cache: ${{ needs.prepare.outputs.no_cache == 'true' }}
 
-      - name: Push Docker image
-        if: needs.prepare.outputs.push == 'true'
-        run: docker push ${{ steps.meta.outputs.local_tag }}
+      # - name: Push Docker image
+      #   if: needs.prepare.outputs.push == 'true'
+      #   run: docker push ${{ steps.meta.outputs.local_tag }}
 
       - name: Export image tag for config update
         id: export
