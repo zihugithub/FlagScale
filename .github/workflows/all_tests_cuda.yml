@@ -1,10 +1,25 @@
 name: cuda_tests
 
 on:
+  # Called by Build Docker Images - CUDA workflow
+  workflow_call:
+
   push:
     branches: ["main"]
+    paths-ignore:
+      - 'docker/cuda/**'
+      - 'docker/build.sh'
+      - 'tools/install/**'
+      - 'requirements/**'
+      - '.github/workflows/build_image_cuda.yml'
   pull_request:
     branches: ["main"]
+    paths-ignore:
+      - 'docker/cuda/**'
+      - 'docker/build.sh'
+      - 'tools/install/**'
+      - 'requirements/**'
+      - '.github/workflows/build_image_cuda.yml'
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}-${{ github.actor }}
