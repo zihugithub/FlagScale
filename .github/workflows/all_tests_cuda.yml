@@ -8,6 +8,13 @@ on:
 
   push:
     branches: ["main"]
+    paths-ignore:
+      - 'docker/cuda/**'
+      - 'docker/build.sh'
+      - 'tools/install/**'
+      - 'requirements/**'
+      - '.github/workflows/build_image_cuda.yml'
+
   pull_request:
     branches: ["main"]
     paths-ignore:
