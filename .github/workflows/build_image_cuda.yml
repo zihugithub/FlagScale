@@ -236,7 +236,7 @@ jobs:
   # Update Config: update cuda.yml with localhost tags (temporary, for test validation)
   # After tests pass, push_image_harbor.yml will promote to Harbor and update to final tags
   # ---------------------------------------------------------------------------
-    update-config:
+  update-config:
     name: Update CI config
     needs: build
     runs-on: [self-hosted, Linux, X64, nvidia-0, gpus-8]
