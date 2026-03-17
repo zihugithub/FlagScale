@@ -52,6 +52,10 @@ on:
       - 'requirements/**'
       - '.github/workflows/build_image_cuda.yml'
 
+
+permissions:
+  contents: write
+
 concurrency:
   group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
   cancel-in-progress: true
@@ -235,13 +239,15 @@ jobs:
     name: Update CI config
     needs: build
     runs-on: [self-hosted, Linux, X64]
-    if: needs.prepare.outputs.push == 'true' && needs.build.result == 'success'
+    if: needs.build.result == 'success'
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
         with:
-          ref: ${{ github.ref }}
+          ref: ${{ github.head_ref || github.ref }}
           token: ${{ secrets.GITHUB_TOKEN }}
+          clean: true
+          fetch-depth: 0
 
       - name: Update cuda.yml with new image tags
         run: |
