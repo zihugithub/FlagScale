@@ -1,0 +1,20 @@
+# MetaX platform environment variables for inference/robobrain2_flaggems
+# TODO: Replace with actual MetaX environment variables
+experiment:
+  envs:
+    HYDRA_FULL_ERROR: 1
+    USE_FLAGGEMS: "true"
+    SEED: 1234
+    PYTHONHASHSEED: 0
+    MKL_NUM_THREADS: 1
+    OMP_NUM_THREADS: 1
+    NUMEXPR_NUM_THREADS: 1
+    SCIPY_RDRANDOM: 0
+    TF_DETERMINISTIC_OPS: 1
+    MAGIC_CACHE: disabled
+    USE_FS_SERVE: false
+    # TODO: MetaX visible devices and platform-specific env vars
+    # MACA_VISIBLE_DEVICES: "0,1,2,3,4,5,6,7"
+  cmds:
+    # TODO: Update conda env activation for MetaX
+    before_start: source /root/miniconda3/bin/activate flagscale-inference

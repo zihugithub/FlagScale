@@ -90,17 +90,17 @@ run_test() {
         rm -rf "$exp_dir"/* 2>/dev/null || true
     fi
 
-    # Map task name to flagscale CLI subcommand
-    # e.g. hetero_train -> train, train -> train, others unchanged
-    local cli_task="$task"
-    case "$task" in
-        *train*) cli_task="train" ;;
-    esac
+    # Run test via flagscale CLI using the 'run' command with Hydra overrides.
+    # This allows passing platform-specific envs config group (envs=<platform>).
+    local run_args=("run" "--config-path" "$conf_dir" "--config-name" "$config" "--action" "test")
 
-    # Run test via flagscale CLI
-    # --config expects the full YAML path
-    log_info "Running: flagscale $cli_task $model --config $config_file --test"
-    flagscale "$cli_task" "$model" --config "$config_file" --test || return 1
+    # If platform-specific envs config exists, pass it as a Hydra override
+    if [ -d "$conf_dir/envs" ] && [ -f "$conf_dir/envs/${PLATFORM}.yaml" ]; then
+        run_args+=("envs=${PLATFORM}")
+    fi
+
+    log_info "Running: flagscale ${run_args[*]}"
+    flagscale "${run_args[@]}" || return 1
 
     # Match the corresponding comparison function according to task type
     # Matching rules:
