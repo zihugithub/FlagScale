@@ -254,9 +254,10 @@ jobs:
       - name: Switch to PR branch
         if: github.event_name == 'pull_request'
         run: |
-          PR_REPO="${{ github.event.pull_request.head.repo.clone_url }}"
+          PR_REPO_FULL="${{ github.event.pull_request.head.repo.full_name }}"
           PR_BRANCH="${{ github.head_ref }}"
-          git remote add pr-head "${PR_REPO}" || true
+          FORK_URL="https://x-access-token:${{ secrets.FORK_PUSH_TOKEN }}@github.com/${PR_REPO_FULL}.git"
+          git remote add pr-head "${FORK_URL}" || true
           git fetch pr-head "${PR_BRANCH}"
           git checkout -b "${PR_BRANCH}" "pr-head/${PR_BRANCH}"
 
@@ -298,11 +299,43 @@ jobs:
           fi
 
   # ---------------------------------------------------------------------------
+  # Token help: print setup instructions when update-config fails on fork PRs
+  # ---------------------------------------------------------------------------
+  token-help:
+    name: Print token setup instructions
+    needs: update-config
+    runs-on: ubuntu-latest
+    if: failure() && github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name != github.repository
+    steps:
+      - name: Print FORK_PUSH_TOKEN setup instructions
+        run: |
+          echo "::error::Push to fork failed. The FORK_PUSH_TOKEN secret is missing or invalid."
+          {
+            echo "### Push to fork failed — FORK_PUSH_TOKEN setup required"
+            echo ""
+            echo "**Step 1: Create a Personal Access Token (PAT)**"
+            echo "1. Go to your GitHub account: \`Settings → Developer settings → Personal access tokens → Fine-grained tokens\`"
+            echo "2. Click \`Generate new token\`"
+            echo "3. Set \`Repository access\` → \`Only select repositories\` → select your fork repo (\`${{ github.event.pull_request.head.repo.full_name }}\`)"
+            echo "4. Set \`Permissions\` → \`Repository permissions\` → \`Contents\`: **Read and Write**"
+            echo "5. Click \`Generate token\` and copy the token value"
+            echo ""
+            echo "**Step 2: Add the secret to the upstream repository**"
+            echo "1. Go to [\`${{ github.repository }}\`](https://github.com/${{ github.repository }}/settings/secrets/actions) → \`Settings → Secrets and variables → Actions\`"
+            echo "2. Click \`New repository secret\`"
+            echo "3. Name: \`FORK_PUSH_TOKEN\`"
+            echo "4. Value: paste the token from Step 1"
+            echo "5. Click \`Add secret\`"
+            echo ""
+            echo "**Step 3:** Re-run this workflow"
+          } >> $GITHUB_STEP_SUMMARY
+
+  # ---------------------------------------------------------------------------
   # Summary: verify all builds completed
   # ---------------------------------------------------------------------------
   summary:
     name: Build summary
-    needs: update-config
+    needs: [update-config, token-help]
     runs-on: ubuntu-latest
     if: always()
     steps:
