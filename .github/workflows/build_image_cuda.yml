@@ -238,3 +238,25 @@ jobs:
             exit 1
           fi
           echo "All Docker images built successfully!"
+
+  # ---------------------------------------------------------------------------
+  # Run CUDA tests after build succeeds
+  # ---------------------------------------------------------------------------
+  run_cuda_tests:
+    name: Run CUDA tests
+    needs: summary
+    if: needs.summary.result == 'success'
+    uses: ./.github/workflows/all_tests_cuda.yml
+    secrets: inherit
+
+  # ---------------------------------------------------------------------------
+  # Push validated images to Harbor after tests pass
+  # ---------------------------------------------------------------------------
+  push_images_to_harbor:
+    name: Push images to Harbor
+    needs: run_cuda_tests
+    if: needs.run_cuda_tests.result == 'success'
+    uses: ./.github/workflows/push_image_harbor.yml
+    with:
+      platform: cuda
+    secrets: inherit
