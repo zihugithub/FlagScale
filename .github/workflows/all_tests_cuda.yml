@@ -17,6 +17,7 @@ on:
       - 'tools/install/**'
       - 'requirements/**'
       - '.github/workflows/build_image_cuda.yml'
+      - '.github/workflows/all_tests_cuda.yml'
 
   # Trigger after Build Docker Images - CUDA succeeds
   workflow_run:
