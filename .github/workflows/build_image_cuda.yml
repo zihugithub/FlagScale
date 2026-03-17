@@ -236,29 +236,34 @@ jobs:
   # Update Config: update cuda.yml with localhost tags (temporary, for test validation)
   # After tests pass, push_image_harbor.yml will promote to Harbor and update to final tags
   # ---------------------------------------------------------------------------
-  update-config:
+    update-config:
     name: Update CI config
     needs: build
-    runs-on: [self-hosted, Linux, X64]
+    runs-on: [self-hosted, Linux, X64, nvidia-0, gpus-8]
     if: needs.build.result == 'success'
     steps:
+      - name: Clean workspace
+        run: sudo rm -rf "$GITHUB_WORKSPACE"/* "$GITHUB_WORKSPACE"/.[!.]* 2>/dev/null || true
+
       - name: Checkout code
         uses: actions/checkout@v4
         with:
-          ref: ${{ github.head_ref || github.ref }}
           token: ${{ secrets.GITHUB_TOKEN }}
-          clean: true
           fetch-depth: 0
+
+      - name: Switch to PR branch
+        if: github.event_name == 'pull_request'
+        run: |
+          git fetch origin "${{ github.head_ref }}"
+          git checkout "${{ github.head_ref }}"
 
       - name: Update cuda.yml with new image tags
         run: |
           set -euo pipefail
           CONFIG_FILE=".github/configs/cuda.yml"
 
-          # TRAIN_TAG="${{ needs.build.outputs.train_tag }}"
-          # INFERENCE_TAG="${{ needs.build.outputs.inference_tag }}"
-          TRAIN_TAG="localhost:5000/flagscale-train:dev-cu128-py3.12-20260313153407"
-          INFERENCE_TAG="localhost:5000/flagscale-inference:dev-cu128-py3.12-20260313095551"
+          TRAIN_TAG="${{ needs.build.outputs.train_tag }}"
+          INFERENCE_TAG="${{ needs.build.outputs.inference_tag }}"
 
           if [ -n "$TRAIN_TAG" ]; then
             echo "Updating ci_train_image to: $TRAIN_TAG"
