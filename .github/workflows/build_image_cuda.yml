@@ -248,10 +248,14 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
         with:
-          ref: ${{ github.head_ref || github.ref }}
           token: ${{ secrets.GITHUB_TOKEN }}
-          clean: true
           fetch-depth: 0
+
+      - name: Switch to PR branch
+        if: github.event_name == 'pull_request'
+        run: |
+          git fetch origin "${{ github.head_ref }}"
+          git checkout "${{ github.head_ref }}"
 
       - name: Update cuda.yml with new image tags
         run: |
