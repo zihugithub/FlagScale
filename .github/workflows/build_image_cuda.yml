@@ -53,7 +53,7 @@ on:
       - '.github/workflows/build_image_cuda.yml'
 
 permissions:
-  contents: write
+  contents: read
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
@@ -155,32 +155,26 @@ jobs:
           TIMESTAMP=$(date +%Y%m%d%H%M%S)
 
           # Image naming follows docker/build.sh convention:
-          #   flagscale-<task>:<target>-cu<major><minor>-py<version>-<timestamp>
+          #   flagscale-<task>:<target>-cu<major><minor>-py<version>[-<timestamp>]
           IMAGE_NAME="flagscale-${TASK}"
-          TAG="${TARGET}-cu${CUDA_MAJOR}${CUDA_MINOR}-py${PYTHON_VERSION}-${TIMESTAMP}"
+          TAG="${TARGET}-cu${CUDA_MAJOR}${CUDA_MINOR}-py${PYTHON_VERSION}"
+          TAG_TS="${TAG}-${TIMESTAMP}"
 
-          # Local registry tag (for CI runners)
+          # Build tag (with timestamp, used during docker build)
+          BUILD_TAG="${{ env.REGISTRY }}/${IMAGE_NAME}:${TAG_TS}"
+          # Registry tag (without timestamp, used when pushing to registry)
           LOCAL_TAG="${{ env.REGISTRY }}/${IMAGE_NAME}:${TAG}"
 
           # Derived build arguments
           BASE_IMAGE="nvidia/cuda:${CUDA_VERSION}-devel-ubuntu${UBUNTU_VERSION}"
           PYTORCH_INDEX="https://download.pytorch.org/whl/cu${CUDA_MAJOR}${CUDA_MINOR}"
 
-          # Tags list: local registry only
-          TAGS="${LOCAL_TAG}"
-
           echo "image_name=${IMAGE_NAME}" >> $GITHUB_OUTPUT
           echo "tag=${TAG}" >> $GITHUB_OUTPUT
+          echo "build_tag=${BUILD_TAG}" >> $GITHUB_OUTPUT
           echo "local_tag=${LOCAL_TAG}" >> $GITHUB_OUTPUT
           echo "base_image=${BASE_IMAGE}" >> $GITHUB_OUTPUT
           echo "pytorch_index=${PYTORCH_INDEX}" >> $GITHUB_OUTPUT
-
-          # Multi-line tags output
-          {
-            echo "tags<<EOF"
-            echo "${TAGS}"
-            echo "EOF"
-          } >> $GITHUB_OUTPUT
 
           # Job summary
           {
@@ -193,7 +187,8 @@ jobs:
             echo "| CUDA | \`${CUDA_VERSION}\` |"
             echo "| Python | \`${PYTHON_VERSION}\` |"
             echo "| Dockerfile | \`docker/cuda/Dockerfile.${TASK}\` |"
-            echo "| Local Tag | \`${LOCAL_TAG}\` |"
+            echo "| Build Tag | \`${BUILD_TAG}\` |"
+            echo "| Registry Tag | \`${LOCAL_TAG}\` |"
           } >> $GITHUB_STEP_SUMMARY
 
       - name: Build Docker image
@@ -203,7 +198,7 @@ jobs:
           file: docker/cuda/Dockerfile.${{ matrix.task }}
           target: ${{ needs.prepare.outputs.target }}
           load: true
-          tags: ${{ steps.meta.outputs.tags }}
+          tags: ${{ steps.meta.outputs.build_tag }}
           build-args: |
             BASE_IMAGE=${{ steps.meta.outputs.base_image }}
             CUDA_VERSION=${{ env.CUDA_VERSION }}
@@ -216,7 +211,9 @@ jobs:
 
       - name: Push Docker image
         if: needs.prepare.outputs.push == 'true'
-        run: docker push ${{ steps.meta.outputs.local_tag }}
+        run: |
+          docker tag ${{ steps.meta.outputs.build_tag }} ${{ steps.meta.outputs.local_tag }}
+          docker push ${{ steps.meta.outputs.local_tag }}
 
       - name: Export image tag for config update
         id: export
@@ -233,116 +230,40 @@ jobs:
           echo "**Pushed:** ${{ needs.prepare.outputs.push }}" >> $GITHUB_STEP_SUMMARY
 
   # ---------------------------------------------------------------------------
-  # Update Config: update cuda.yml with localhost tags (temporary, for test validation)
-  # After tests pass, push_image_harbor.yml will promote to Harbor and update to final tags
-  # ---------------------------------------------------------------------------
-  update-config:
-    name: Update CI config
-    needs: build
-    runs-on: [self-hosted, Linux, X64, nvidia-0, gpus-8]
-    if: needs.build.result == 'success'
-    steps:
-      - name: Clean workspace
-        run: sudo rm -rf "$GITHUB_WORKSPACE"/* "$GITHUB_WORKSPACE"/.[!.]* 2>/dev/null || true
-
-      - name: Checkout code
-        uses: actions/checkout@v4
-        with:
-          token: ${{ secrets.GITHUB_TOKEN }}
-          fetch-depth: 0
-
-      - name: Switch to PR branch
-        if: github.event_name == 'pull_request'
-        run: |
-          PR_REPO_FULL="${{ github.event.pull_request.head.repo.full_name }}"
-          PR_BRANCH="${{ github.head_ref }}"
-          FORK_URL="https://x-access-token:${{ secrets.FORK_PUSH_TOKEN }}@github.com/${PR_REPO_FULL}.git"
-          git remote add pr-head "${FORK_URL}" || true
-          git fetch pr-head "${PR_BRANCH}"
-          git checkout -b "${PR_BRANCH}" "pr-head/${PR_BRANCH}"
-
-      - name: Update cuda.yml with new image tags
-        run: |
-          set -euo pipefail
-          CONFIG_FILE=".github/configs/cuda.yml"
-
-          TRAIN_TAG="${{ needs.build.outputs.train_tag }}"
-          INFERENCE_TAG="${{ needs.build.outputs.inference_tag }}"
-
-          if [ -n "$TRAIN_TAG" ]; then
-            echo "Updating ci_train_image to: $TRAIN_TAG"
-            sed -i "s|^ci_train_image:.*|ci_train_image: ${TRAIN_TAG}|" "$CONFIG_FILE"
-          fi
-
-          if [ -n "$INFERENCE_TAG" ]; then
-            echo "Updating ci_inference_image to: $INFERENCE_TAG"
-            sed -i "s|^ci_inference_image:.*|ci_inference_image: ${INFERENCE_TAG}|" "$CONFIG_FILE"
-          fi
-
-          echo "Updated config:"
-          cat "$CONFIG_FILE"
-
-      - name: Commit and push config update
-        run: |
-          git config user.name "github-actions[bot]"
-          git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add .github/configs/cuda.yml
-          if git diff --cached --quiet; then
-            echo "No config changes to commit"
-          else
-            git commit -m "ci: update CUDA image tags [skip ci]"
-            if [ "${{ github.event_name }}" = "pull_request" ]; then
-              git push pr-head HEAD:"${{ github.head_ref }}"
-            else
-              git push
-            fi
-          fi
-
-  # ---------------------------------------------------------------------------
-  # Token help: print setup instructions when update-config fails on fork PRs
-  # ---------------------------------------------------------------------------
-  token-help:
-    name: Print token setup instructions
-    needs: update-config
-    runs-on: ubuntu-latest
-    if: failure() && github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name != github.repository
-    steps:
-      - name: Print FORK_PUSH_TOKEN setup instructions
-        run: |
-          echo "::error::Push to fork failed. The FORK_PUSH_TOKEN secret is missing or invalid."
-          {
-            echo "### Push to fork failed — FORK_PUSH_TOKEN setup required"
-            echo ""
-            echo "**Step 1: Create a Personal Access Token (PAT)**"
-            echo "1. Go to your GitHub account: \`Settings → Developer settings → Personal access tokens → Fine-grained tokens\`"
-            echo "2. Click \`Generate new token\`"
-            echo "3. Set \`Repository access\` → \`Only select repositories\` → select your fork repo (\`${{ github.event.pull_request.head.repo.full_name }}\`)"
-            echo "4. Set \`Permissions\` → \`Repository permissions\` → \`Contents\`: **Read and Write**"
-            echo "5. Click \`Generate token\` and copy the token value"
-            echo ""
-            echo "**Step 2: Add the secret to the upstream repository**"
-            echo "1. Go to [\`${{ github.repository }}\`](https://github.com/${{ github.repository }}/settings/secrets/actions) → \`Settings → Secrets and variables → Actions\`"
-            echo "2. Click \`New repository secret\`"
-            echo "3. Name: \`FORK_PUSH_TOKEN\`"
-            echo "4. Value: paste the token from Step 1"
-            echo "5. Click \`Add secret\`"
-            echo ""
-            echo "**Step 3:** Re-run this workflow"
-          } >> $GITHUB_STEP_SUMMARY
-
-  # ---------------------------------------------------------------------------
   # Summary: verify all builds completed
   # ---------------------------------------------------------------------------
   summary:
     name: Build summary
-    needs: [update-config, token-help]
+    needs: build
     runs-on: ubuntu-latest
     if: always()
     steps:
       - name: Verify build results
         run: |
-          if [ "${{ needs.update-config.result }}" != "success" ]; then
+          if [ "${{ needs.build.result }}" != "success" ]; then
             echo "::error::One or more image builds failed"
             exit 1
           fi
           echo "All Docker images built successfully!"
+
+  # ---------------------------------------------------------------------------
+  # Run CUDA tests after build succeeds
+  # ---------------------------------------------------------------------------
+  run_cuda_tests:
+    name: Run CUDA tests
+    needs: summary
+    if: needs.summary.result == 'success'
+    uses: ./.github/workflows/all_tests_cuda.yml
+    secrets: inherit
+
+  # ---------------------------------------------------------------------------
+  # Push validated images to Harbor after tests pass
+  # ---------------------------------------------------------------------------
+  push_images_to_harbor:
+    name: Push images to Harbor
+    needs: run_cuda_tests
+    if: needs.run_cuda_tests.result == 'success'
+    uses: ./.github/workflows/push_image_harbor.yml
+    with:
+      platform: cuda
+    secrets: inherit

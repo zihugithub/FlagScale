@@ -1,13 +1,17 @@
 name: cuda_tests
 
 on:
-  # Trigger after Build Docker Images - CUDA succeeds
-  workflow_run:
-    workflows: ["Build Docker Images - CUDA"]
-    types: [completed]
+  # Called by Build Docker Images - CUDA workflow
+  workflow_call:
 
   push:
     branches: ["main"]
+    paths-ignore:
+      - 'docker/cuda/**'
+      - 'docker/build.sh'
+      - 'tools/install/**'
+      - 'requirements/**'
+      - '.github/workflows/build_image_cuda.yml'
   pull_request:
     branches: ["main"]
     paths-ignore:
@@ -23,10 +27,6 @@ concurrency:
 
 jobs:
   run_tests:
-    # Skip if triggered by workflow_run but the build did not succeed
-    if: >-
-      github.event_name != 'workflow_run' ||
-      github.event.workflow_run.conclusion == 'success'
     # Package manager and environment settings are read from .github/configs/cuda.yml
     uses: ./.github/workflows/all_tests_common.yml
     with:
@@ -44,14 +44,3 @@ jobs:
             exit 1
           fi
           echo "✅ All tests passed!"
-
-  push_images_to_harbor:
-    needs: all_tests
-    if: >-
-      needs.all_tests.result == 'success' &&
-      github.event_name == 'workflow_run' &&
-      github.event.workflow_run.conclusion == 'success'
-    uses: ./.github/workflows/push_image_harbor.yml
-    with:
-      platform: cuda
-    secrets: inherit
