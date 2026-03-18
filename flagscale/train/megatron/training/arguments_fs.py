@@ -15,6 +15,9 @@ except:
     )
 from megatron.plugin.hetero.parallel_context import RankMapper
 
+from megatron.plugin.platform import get_platform
+cur_platform = get_platform()
+
 class FSTrainArguments:
     """Extend the Megatron arguments with FlagScale specific arguments."""
 
@@ -31,7 +34,7 @@ class FSTrainArguments:
         """Initialize torch.distributed and core model parallel."""
         args = self.args
 
-        device_count = torch.cuda.device_count()
+        device_count = cur_platform.device_count()
         if torch.distributed.is_initialized():
 
             if args.rank == 0:
@@ -48,8 +51,8 @@ class FSTrainArguments:
                 print("> initializing torch distributed ...", flush=True)
             # Manually set the device ids.
             if device_count > 0:
-                torch.cuda.set_device(args.local_rank)
-                device_id = torch.device(f"cuda:{args.local_rank}")
+                cur_platform.set_device(args.local_rank)
+                device_id = cur_platform.device(args.local_rank)
             else:
                 device_id = None
 
@@ -784,6 +787,75 @@ def _add_flagos_args(parser):
     return parser
 
 
+def _add_engram_args(parser):
+    group = parser.add_argument_group(title="flagscale engram")
+    group.add_argument('--use-engram', action='store_true',
+                       help='Use Engram module.')
+    group.add_argument(
+        '--engram-tokenizer-name-or-path',
+        type=str,
+        default=None,
+        help='Tokenizer name or path used by Engram',
+    )
+    group.add_argument(
+        '--engram-vocab-size',
+        nargs='*',
+        type=int,
+        default=None,
+        help='Engram vocab size per layer (list of ints)',
+    )
+    group.add_argument(
+        '--max-ngram-size',
+        type=int,
+        default=1,
+        help='Maximum n-gram size for Engram',
+    )
+    group.add_argument(
+        '--n-embed-per-ngram',
+        type=int,
+        default=None,
+        help='Embedding dimension per n-gram',
+    )
+    group.add_argument(
+        '--n-head-per-ngram',
+        type=int,
+        default=1,
+        help='Number of heads per n-gram',
+    )
+    group.add_argument(
+        '--engram-layer-ids',
+        nargs='*',
+        type=int,
+        default=None,
+        help='Layer ids where Engram is applied',
+    )
+    group.add_argument(
+        '--engram-pad-id',
+        type=int,
+        default=0,
+        help='Pad token id for Engram hashing',
+    )
+    group.add_argument(
+        '--engram-seed',
+        type=int,
+        default=0,
+        help='Random seed for Engram hashing',
+    )
+    group.add_argument(
+        '--engram-kernel-size',
+        type=int,
+        default=1,
+        help='Kernel size for Engram short convolution',
+    )
+    group.add_argument(
+        '--engram-hc-mult',
+        type=int,
+        default=1,
+        help='Hyper-connection multiplicity for Engram',
+    )
+    return parser
+
+
 def add_flagscale_arguments(parser):
     """
     Add all FlagScale-specific arguments to a Megatron parser.
@@ -807,4 +879,5 @@ def add_flagscale_arguments(parser):
     parser = _add_peft_args(parser)
     parser = _add_regularization_args(parser)
     parser = _add_flagos_args(parser)
+    parser = _add_engram_args(parser)
     return parser
