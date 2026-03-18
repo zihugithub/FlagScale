@@ -220,11 +220,12 @@ runs:
           --arg workflow_id "${{ steps.resolve.outputs.workflow_id }}" \
           --arg commit_id "${{ steps.resolve.outputs.commit_id }}" \
           --arg run_id "${{ steps.resolve.outputs.run_id }}" \
+          --argjson header_config "${{ inputs.header_config }}" \
           --slurpfile report "${{ inputs.report_path }}" \
           '{
             items: [ $report[0] | to_entries[] | {
-              metric: .key,
-              values: .value.values,
+              ($header_config[0].field): .key,
+              ($header_config[1].field): .value,
               commit_id: $commit_id,
               repository_name: $repository_name,
               workflow_id: $workflow_id,

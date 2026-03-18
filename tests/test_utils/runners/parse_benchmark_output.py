@@ -96,10 +96,10 @@ def main():
     # Extract metrics
     metrics = extract_metrics_from_log(lines, metric_keys)
 
-    # Build benchmark.json with values structure matching gold values format
+    # Build benchmark_metrics.json: { "metric_name": [values...], ... }
     benchmark = {}
     for key in metric_keys:
-        benchmark[key] = {"values": metrics.get(key, [])}
+        benchmark[key] = metrics.get(key, [])
 
     # Write output
     with open(output_json, "w") as f:
@@ -107,8 +107,8 @@ def main():
 
     print(f"Benchmark results written to {output_json}")
     print(f"Metrics extracted: {list(benchmark.keys())}")
-    for key, data in benchmark.items():
-        print(f"  {key}: {len(data['values'])} values")
+    for key, values in benchmark.items():
+        print(f"  {key}: {len(values)} values")
 
 
 if __name__ == "__main__":
