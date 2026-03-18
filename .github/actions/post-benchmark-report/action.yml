@@ -34,6 +34,10 @@ inputs:
     description: 'GitHub commit SHA (defaults to github.sha)'
     required: false
     default: ''
+  run_id:
+    description: 'GitHub Actions run ID (defaults to github.run_id)'
+    required: false
+    default: ''
   page_size:
     description: 'Number of items per page for query (default: 10)'
     required: false
@@ -99,6 +103,13 @@ runs:
         fi
         echo "commit_id=$COMMIT_ID" >> "$GITHUB_OUTPUT"
 
+        # Resolve run_id
+        RUN_ID="${{ inputs.run_id }}"
+        if [ -z "$RUN_ID" ]; then
+          RUN_ID="${{ github.run_id }}"
+        fi
+        echo "run_id=$RUN_ID" >> "$GITHUB_OUTPUT"
+
         # Resolve list_name
         LIST_NAME="${{ inputs.list_name }}"
         if [ -z "$LIST_NAME" ]; then
@@ -124,6 +135,7 @@ runs:
         echo "  repository_name: $REPO_NAME"
         echo "  workflow_id:     $WORKFLOW_ID"
         echo "  commit_id:       $COMMIT_ID"
+        echo "  run_id:          $RUN_ID"
         echo "  list_code:       ${{ inputs.list_code }}"
         echo "  list_name:       $LIST_NAME"
         echo "  report_path:     ${{ inputs.report_path }}"
@@ -207,6 +219,7 @@ runs:
           --arg repository_name "${{ steps.resolve.outputs.repository_name }}" \
           --arg workflow_id "${{ steps.resolve.outputs.workflow_id }}" \
           --arg commit_id "${{ steps.resolve.outputs.commit_id }}" \
+          --arg run_id "${{ steps.resolve.outputs.run_id }}" \
           --slurpfile report "${{ inputs.report_path }}" \
           '{
             items: [ $report[0] | to_entries[] | {
@@ -214,7 +227,8 @@ runs:
               values: .value.values,
               commit_id: $commit_id,
               repository_name: $repository_name,
-              workflow_id: $workflow_id
+              workflow_id: $workflow_id,
+              run_id: $run_id
             } ]
           }')
 
