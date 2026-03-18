@@ -205,6 +205,8 @@ runs:
       id: upload
       if: steps.resolve.outputs.skip != 'true'
       shell: bash
+      env:
+        HEADER_CONFIG: ${{ inputs.header_config }}
       run: |
         set -euo pipefail
 
@@ -213,14 +215,14 @@ runs:
         LIST_CODE="${{ inputs.list_code }}"
 
         # Read report file and transform into items array
-        # Input format:  { "metric_name": { "values": [...] }, ... }
-        # Output format: { "items": [ { "metric": "...", "values": [...], "commit_id": "...", "repository_name": "...", "workflow_id": "..." } ] }
+        # Input format:  { "metric_name": [values...], ... }
+        # Output format: { "items": [ { "<field0>": "...", "<field1>": [...], "commit_id": "...", ... } ] }
         DATA_PAYLOAD=$(jq -n \
           --arg repository_name "${{ steps.resolve.outputs.repository_name }}" \
           --arg workflow_id "${{ steps.resolve.outputs.workflow_id }}" \
           --arg commit_id "${{ steps.resolve.outputs.commit_id }}" \
           --arg run_id "${{ steps.resolve.outputs.run_id }}" \
-          --argjson header_config "${{ inputs.header_config }}" \
+          --argjson header_config "$HEADER_CONFIG" \
           --slurpfile report "${{ inputs.report_path }}" \
           '{
             items: [ $report[0] | to_entries[] | {
