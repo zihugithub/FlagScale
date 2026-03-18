@@ -11,6 +11,7 @@ import json
 import re
 import sys
 
+
 # Default benchmark metric keys if no gold values file is provided
 DEFAULT_METRIC_KEYS = [
     "elapsed time per iteration (ms):",
@@ -35,7 +36,9 @@ def extract_metrics_from_log(lines, metric_keys):
             part = part.strip()
             for key in metric_keys:
                 if part.startswith(key.rstrip(":")):
-                    match = re.search(r":\s*([+-]?\d+\.?\d*(?:[eE][+-]?\d+)?)", part)
+                    match = re.search(
+                        r":\s*([+-]?\d+\.?\d*(?:[eE][+-]?\d+)?)", part
+                    )
                     if match:
                         try:
                             results[key].append(float(match.group(1)))
@@ -67,7 +70,6 @@ def main():
     try:
         with open(gold_values_file, "r") as f:
             gold_data = json.load(f)
-
         # Handle platform/device-classified gold values structure
         # Drill down through non-metric levels (platform -> device -> metrics)
         def _is_metric_keys(keys):
@@ -94,10 +96,10 @@ def main():
     # Extract metrics
     metrics = extract_metrics_from_log(lines, metric_keys)
 
-    # Build benchmark.json with values structure matching gold values format
+    # Build benchmark_metrics.json: { "metric_name": [values...], ... }
     benchmark = {}
     for key in metric_keys:
-        benchmark[key] = {"values": metrics.get(key, [])}
+        benchmark[key] = metrics.get(key, [])
 
     # Write output
     with open(output_json, "w") as f:
@@ -105,8 +107,8 @@ def main():
 
     print(f"Benchmark results written to {output_json}")
     print(f"Metrics extracted: {list(benchmark.keys())}")
-    for key, data in benchmark.items():
-        print(f"  {key}: {len(data['values'])} values")
+    for key, values in benchmark.items():
+        print(f"  {key}: {len(values)} values")
 
 
 if __name__ == "__main__":
