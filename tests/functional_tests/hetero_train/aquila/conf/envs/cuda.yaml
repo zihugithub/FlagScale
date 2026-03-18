@@ -1,3 +1,4 @@
+# @package _global_
 # CUDA platform environment variables for hetero_train/aquila
 experiment:
   envs:

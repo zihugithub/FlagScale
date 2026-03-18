@@ -1,0 +1,20 @@
+defaults:
+  - envs: cuda
+  - _self_
+  - train: tp4_pp2
+
+experiment:
+  exp_name: tp4_pp2
+  exp_dir: tests/functional_tests/train/qwen3/test_results/tp4_pp2
+  task:
+    type: train
+    backend: megatron
+    entrypoint: flagscale/train/megatron/train_gpt.py
+  runner:
+    ssh_port: null
+  shell_cmds: null
+action: run
+
+hydra:
+  run:
+    dir: ${experiment.exp_dir}/hydra

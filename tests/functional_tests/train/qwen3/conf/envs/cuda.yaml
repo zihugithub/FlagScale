@@ -1,5 +1,5 @@
 # @package _global_
-# CUDA platform environment variables for train/aquila
+# CUDA platform environment variables for train/qwen3
 experiment:
   envs:
     HYDRA_FULL_ERROR: 1

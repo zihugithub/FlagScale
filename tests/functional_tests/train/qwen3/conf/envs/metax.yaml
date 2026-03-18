@@ -1,5 +1,5 @@
 # @package _global_
-# MetaX platform environment variables for hetero_train/aquila
+# MetaX platform environment variables for train/qwen3
 # TODO: Replace with actual MetaX environment variables
 experiment:
   envs:

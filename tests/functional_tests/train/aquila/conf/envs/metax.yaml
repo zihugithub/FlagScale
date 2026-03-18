@@ -1,3 +1,4 @@
+# @package _global_
 # MetaX platform environment variables for train/aquila
 # TODO: Replace with actual MetaX environment variables
 experiment:
