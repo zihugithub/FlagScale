@@ -135,13 +135,15 @@ def find_latest_stdout_log(start_path):
     return None, latest_attempt
 
 
-@pytest.mark.usefixtures("path", "task", "model", "case")
-def test_train_equal(path, task, model, case):
+@pytest.mark.usefixtures("path", "task", "model", "case", "platform", "device")
+def test_train_equal(path, task, model, case, platform, device):
     """
     Compare training metrics from test run against gold values.
 
     This test extracts loss metrics from stdout.log and compares them
     against pre-recorded gold values using numpy.allclose for tolerance.
+
+    Gold values are stored in nested format: {platform: {device: {metric: {values: [...]}}}}
     """
     # Construct the test_result_path using the provided fixtures
     test_result_path = os.path.join(path, task, model, "test_results", case)
@@ -164,6 +166,16 @@ def test_train_equal(path, task, model, case):
 
     with open(gold_value_path, "r") as f:
         gold_result_json = json.load(f)
+
+    # Navigate nested structure: {platform: {device: {metric: ...}}}
+    assert platform in gold_result_json, (
+        f"Platform '{platform}' not found in gold values. Available: {list(gold_result_json.keys())}"
+    )
+    platform_data = gold_result_json[platform]
+    assert device in platform_data, (
+        f"Device '{device}' not found for platform '{platform}'. Available: {list(platform_data.keys())}"
+    )
+    gold_result_json = platform_data[device]
 
     # Extract the metric keys from gold values
     metric_keys = list(gold_result_json.keys())

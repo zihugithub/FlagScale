@@ -1,0 +1,57 @@
+# MetaX Hardware Configuration
+# This file defines CI/CD settings for MetaX-based testing
+# Test configurations are defined in tests/test_utils/config/platforms/metax.yaml
+
+hardware_name: metax
+display_name: "MetaX Tests"
+
+# Docker image for this hardware
+# TODO: Replace with actual MetaX Docker image
+ci_image: localhost:5000/flagscale:metax-TODO
+ci_train_image: localhost:5000/flagscale-train:metax-TODO
+ci_inference_image: localhost:5000/flagscale-inference:metax-TODO
+
+# Runner labels for this hardware
+# TODO: Replace with actual MetaX runner labels
+runner_labels:
+  - self-hosted
+  - Linux
+  - X64
+  - metax-0        # TODO: Update to actual MetaX runner label
+  - gpus-8         # TODO: Update to actual GPU count
+
+# Container volumes (hardware-specific paths)
+# TODO: Update paths if MetaX uses different mount points
+container_volumes:
+  - /home/flagscale_cicd/flask/static:/workspace/report
+  - /home/flagscale_cicd/flask/config:/workspace/config
+  - /home/flagscale_cicd/docker/docker_build/docker_data:/home/gitlab-runner/data
+  - /home/flagscale_cicd/docker/docker_build/docker_tokenizers:/home/gitlab-runner/tokenizers
+  - /home/flagscale_cicd/sccache:/github/home/.cache/sccache
+
+# Container options (hardware-specific settings)
+# TODO: Update GPU runtime options for MetaX (e.g., replace --gpus all if needed)
+container_options: "--gpus all --shm-size=500g --hostname flagscale_cicd --user root --ulimit nofile=65535:65535"
+
+# =============================================================================
+# Package Manager Configuration
+# =============================================================================
+# Supported package managers: pip, uv, conda
+#   - pip:   Use pip directly (standard Python)
+#   - uv:    Use uv pip (fast, modern package manager)
+#   - conda: Use conda environment with pip for PyPI packages
+#
+# TODO: Update package manager settings for MetaX environment
+pkg_mgr: "conda"
+
+# Environment path (venv path for uv, conda installation path for conda)
+# TODO: Update to actual MetaX environment path
+env_path: "/root/miniconda3"
+
+# Conda environment name (for conda only)
+# TODO: Update environment names for MetaX
+env_names:
+  train: "flagscale-train"
+  hetero_train: "flagscale-train"
+  inference: "flagscale-inference"
+  rl: "flagscale-rl"

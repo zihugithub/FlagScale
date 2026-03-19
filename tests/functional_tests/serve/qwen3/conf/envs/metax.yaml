@@ -1,0 +1,9 @@
+# MetaX platform environment variables for serve/qwen3
+# TODO: Replace with actual MetaX environment variables
+experiment:
+  envs:
+    no_proxy: "127.0.0.1,localhost"
+    # TODO: MetaX device connection env var
+  cmds:
+    # TODO: Update conda env activation for MetaX
+    before_start: ulimit -n 65535 && source /root/miniconda3/bin/activate flagscale-inference

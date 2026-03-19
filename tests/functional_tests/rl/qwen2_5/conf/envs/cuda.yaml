@@ -1,0 +1,7 @@
+# CUDA platform environment variables for rl/qwen2_5
+experiment:
+  envs:
+    CUDA_VISIBLE_DEVICES: 0,1,2,3,4,5,6,7
+    TORCH_DEVICE_BACKEND_AUTOLOAD: 0
+  cmds:
+    before_start: source /root/miniconda3/bin/activate flagscale-RL
