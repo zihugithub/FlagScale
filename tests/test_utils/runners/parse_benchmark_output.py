@@ -96,10 +96,11 @@ def main():
     # Extract metrics
     metrics = extract_metrics_from_log(lines, metric_keys)
 
-    # Build benchmark_metrics.json: { "metric_name": [values...], ... }
+    # Build benchmark_metrics.json: { "metric_name": {"values": [...]}, ... }
+    # Each value is an object whose keys match header_config field names
     benchmark = {}
     for key in metric_keys:
-        benchmark[key] = metrics.get(key, [])
+        benchmark[key] = {"values": metrics.get(key, [])}
 
     # Write output
     with open(output_json, "w") as f:
@@ -107,8 +108,8 @@ def main():
 
     print(f"Benchmark results written to {output_json}")
     print(f"Metrics extracted: {list(benchmark.keys())}")
-    for key, values in benchmark.items():
-        print(f"  {key}: {len(values)} values")
+    for key, data in benchmark.items():
+        print(f"  {key}: {len(data['values'])} values")
 
 
 if __name__ == "__main__":
