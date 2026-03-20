@@ -5,7 +5,7 @@ on:
   workflow_call:
 
   push:
-    branches: ["auto-build-image-20260320"]
+    branches: ["main"]
     paths-ignore:
       - 'docker/cuda/**'
       - 'docker/build.sh'

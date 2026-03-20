@@ -130,8 +130,8 @@ jobs:
       inference_tag: ${{ steps.export.outputs.inference_tag }}
       all_tag: ${{ steps.export.outputs.all_tag }}
     steps:
-      - name: Clean workspace
-        run: sudo rm -rf "$GITHUB_WORKSPACE"/* "$GITHUB_WORKSPACE"/.[!.]* 2>/dev/null || true
+      # - name: Clean workspace
+      #   run: sudo rm -rf "$GITHUB_WORKSPACE"/* "$GITHUB_WORKSPACE"/.[!.]* 2>/dev/null || true
 
       - name: Checkout code
         uses: actions/checkout@v4
