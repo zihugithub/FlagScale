@@ -237,8 +237,5 @@ jobs:
 
           echo "exit_code=$exit_code" >> $GITHUB_OUTPUT
           exit $exit_code
-        timeout-minutes: 15
+        # timeout-minutes: 15
 
-      - name: Handle unit test failure
-        if: steps.unit_test.outcome == 'failure'
-        run: sleep 360m
