@@ -17,6 +17,9 @@ jobs:
     name: Push validated images to Harbor
     runs-on: [self-hosted, Linux, X64, nvidia-0, gpus-8]
     steps:
+      - name: Clean workspace
+        run: sudo rm -rf "$GITHUB_WORKSPACE"/* "$GITHUB_WORKSPACE"/.[!.]* 2>/dev/null || true
+
       - name: Checkout code
         uses: actions/checkout@v4
 
