@@ -221,7 +221,7 @@ jobs:
           echo "Python version: $(python --version)"
 
 
-          # sleep 360m
+          sleep 360m
 
           # Run unit tests using run_tests.sh
           bash "$PROJECT_ROOT/tests/test_utils/runners/run_tests.sh" \
