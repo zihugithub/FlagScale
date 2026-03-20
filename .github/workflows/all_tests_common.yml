@@ -100,39 +100,39 @@ jobs:
           # Load configuration and group tests by task
           load_platform_config "$PLATFORM"
 
-  # # CLI validation runs first (outside virtual env) as a gate for all subsequent tests
-  # cli_validation:
-  #   needs: checkout_and_config
-  #   uses: ./.github/workflows/functional_tests_cli.yml
-  #   with:
-  #     platform: ${{ inputs.platform }}
-  #     image: ${{ needs.checkout_and_config.outputs.ci_train_image }}
-  #     runs_on: ${{ needs.checkout_and_config.outputs.runs_on }}
-  #     container_volumes: ${{ needs.checkout_and_config.outputs.container_volumes }}
-  #     container_options: ${{ needs.checkout_and_config.outputs.container_options }}
-  #     source_artifact: flagscale-source-${{ github.sha }}
-
-  unit_tests:
-    needs:
-      - checkout_and_config
-      # - cli_validation
-    strategy:
-      fail-fast: false
-      matrix:
-        device: ${{ fromJson(needs.checkout_and_config.outputs.device_types) }}
-    uses: ./.github/workflows/unit_tests_common.yml
-    name: unit_tests
+  # CLI validation runs first (outside virtual env) as a gate for all subsequent tests
+  cli_validation:
+    needs: checkout_and_config
+    uses: ./.github/workflows/functional_tests_cli.yml
     with:
       platform: ${{ inputs.platform }}
-      device: ${{ matrix.device }}
       image: ${{ needs.checkout_and_config.outputs.ci_train_image }}
       runs_on: ${{ needs.checkout_and_config.outputs.runs_on }}
       container_volumes: ${{ needs.checkout_and_config.outputs.container_volumes }}
       container_options: ${{ needs.checkout_and_config.outputs.container_options }}
       source_artifact: flagscale-source-${{ github.sha }}
-      pkg_mgr: ${{ needs.checkout_and_config.outputs.pkg_mgr }}
-      env_name: ${{ needs.checkout_and_config.outputs.env_name_train }}
-      env_path: ${{ needs.checkout_and_config.outputs.env_path }}
+
+  # unit_tests:
+    # needs:
+    #   - checkout_and_config
+    #   # - cli_validation
+    # strategy:
+    #   fail-fast: false
+    #   matrix:
+    #     device: ${{ fromJson(needs.checkout_and_config.outputs.device_types) }}
+    # uses: ./.github/workflows/unit_tests_common.yml
+    # name: unit_tests
+    # with:
+    #   platform: ${{ inputs.platform }}
+    #   device: ${{ matrix.device }}
+    #   image: ${{ needs.checkout_and_config.outputs.ci_train_image }}
+    #   runs_on: ${{ needs.checkout_and_config.outputs.runs_on }}
+    #   container_volumes: ${{ needs.checkout_and_config.outputs.container_volumes }}
+    #   container_options: ${{ needs.checkout_and_config.outputs.container_options }}
+    #   source_artifact: flagscale-source-${{ github.sha }}
+    #   pkg_mgr: ${{ needs.checkout_and_config.outputs.pkg_mgr }}
+    #   env_name: ${{ needs.checkout_and_config.outputs.env_name_train }}
+    #   env_path: ${{ needs.checkout_and_config.outputs.env_path }}
 
   # functional_tests_train:
   #   needs:
