@@ -42,8 +42,8 @@ on:
         type: boolean
         default: false
 
-  push:
-    branches: ["auto-build-image-20260320"]
+  # push:
+  #   branches: ["auto-build-image-20260320"]
 
   # Trigger on PRs that modify docker-related files
   pull_request:
@@ -131,7 +131,7 @@ jobs:
       all_tag: ${{ steps.export.outputs.all_tag }}
     steps:
       # - name: Clean workspace
-      #   run: sudo rm -rf "$GITHUB_WORKSPACE"/* "$GITHUB_WORKSPACE"/.[!.]* 2>/dev/null || true
+      #   run: rm -rf "$GITHUB_WORKSPACE"/* "$GITHUB_WORKSPACE"/.[!.]* 2>/dev/null || true
 
       - name: Checkout code
         uses: actions/checkout@v4
