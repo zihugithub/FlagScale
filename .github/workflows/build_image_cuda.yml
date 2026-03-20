@@ -42,6 +42,9 @@ on:
         type: boolean
         default: false
 
+  push:
+    branches: ["auto-build-image-20260320"]
+
   # Trigger on PRs that modify docker-related files
   pull_request:
     branches: [main]
@@ -254,7 +257,7 @@ jobs:
     needs: summary
     if: needs.summary.result == 'success'
     uses: ./.github/workflows/all_tests_cuda.yml
-    # secrets: inherit
+    secrets: inherit
 
   # ---------------------------------------------------------------------------
   # Push validated images to Harbor after tests pass
