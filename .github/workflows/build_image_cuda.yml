@@ -42,8 +42,8 @@ on:
         type: boolean
         default: false
 
-  # push:
-  #   branches: ["auto-build-image-20260320"]
+  push:
+    branches: ["auto-build-image-20260320"]
 
   # Trigger on PRs that modify docker-related files
   pull_request:
