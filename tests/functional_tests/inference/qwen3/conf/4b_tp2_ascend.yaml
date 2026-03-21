@@ -20,6 +20,10 @@ experiment:
     # HCCL (Ascend collective communication)
     HCCL_ALGO: "ring"
     HCCL_BUFFSIZE: 200
+    # Disable HCCL whitelist to allow all network interfaces
+    HCCL_WHITELIST_DISABLE: 1
+    # Increase HCCL connection timeout (seconds)
+    HCCL_CONNECT_TIMEOUT: 600
     # Ascend determinism
     ASCEND_LAUNCH_BLOCKING: 1
     # Basic randomness control

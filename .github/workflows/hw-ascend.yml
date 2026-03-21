@@ -12,8 +12,7 @@ concurrency:
 
 jobs:
   run_tests:
-    # Package manager and environment settings are read from .github/configs/ascend.yml
-    uses: ./.github/workflows/all_tests_common.yml
+    uses: ./.github/workflows/all_tests_ascend_common.yml
     with:
       platform: ascend
 
