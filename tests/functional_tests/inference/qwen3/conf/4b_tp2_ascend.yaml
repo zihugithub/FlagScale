@@ -28,8 +28,8 @@ experiment:
     MKL_NUM_THREADS: 1
     OMP_NUM_THREADS: 1
     NUMEXPR_NUM_THREADS: 1
-    # vllm-ascend v0.1.0 does not support V1 engine; use V0
-    VLLM_USE_V1: 0
+    # Explicitly set target device for vllm-ascend platform detection
+    VLLM_TARGET_DEVICE: "npu"
 
 action: run
 
