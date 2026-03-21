@@ -1,0 +1,65 @@
+defaults:
+  - _self_
+  # - train: 30b_a3b
+  - train: 0_6b_fl
+
+experiment:
+  exp_name: Qwen3-0.6b-Train-TE-FL-FGems-FCX
+  # exp_name: Qwen3-0.6b-Train-TE-FL-FGemsNo-mm-sum-cat
+  seed: 42
+  save_steps: 10000
+  load: null
+  exp_dir: Qwen3-0.6b-Train-TE-FL-FGems-FCX
+  ckpt_format: torch
+  task:
+    type: train
+    backend: megatron
+    entrypoint: flagscale/train/train_gpt.py
+    #entrypoint: flagscale/train/megatron/train_gpt.py
+  runner:
+    nnodes: 4
+    nproc_per_node: 8
+    ssh_port: 2180
+    no_shared_fs: false
+    rdzv_backend: static
+    hostfile: /nfs/metax_fs/qwen3_0.6b_pack/FlagScale/examples/qwen3/conf/hostfile.txt
+      #per_node_task: false
+      #no_shared_fs: false
+      #rdzv_backend: static
+      #hostfile: null
+  cmds:
+    before_start: ulimit -n 1048576 #&& source /root/miniconda3/bin/activate flagscale-train
+  envs:
+    LOGLEVEL: "INFO"
+    CUCC_PATH: "/opt/maca/tools/cu-bridge"
+    CUDA_PATH: "/opt/maca/tools/cu-bridge"
+    DEVINFO_ROOT: "/opt/maca"
+    LD_LIBRARY_PATH: "/opt/maca/lib:/opt/maca/mxgpu_llvm/lib:/opt/mxdriver/lib:/opt/maca/ompi/lib:/opt/maca/ucx/lib:/opt/mxdriver/lib"
+    MACA_CLANG: "/opt/maca/mxgpu_llvm"
+    MACA_CLANG_PATH: "/opt/maca/mxgpu_llvm/bin"
+    MACA_PATH: "/opt/maca"
+    PATH: "/opt/conda/bin:/opt/conda/condabin:/opt/maca/tools/cu-bridge:/opt/maca/bin:/opt/maca/mxgpu_llvm/bin:/opt/conda/bin:/opt/maca/bin:/opt/maca/mxgpu_llvm/bin:/opt/maca/ompi/bin:/opt/maca/ucx/bin:/opt/mxdriver/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
+    CUDA_VISIBLE_DEVICES: "0,1,2,3,4,5,6,7"
+    CUDA_DEVICE_MAX_CONNECTIONS: 1
+    NVTE_FLASH_ATTN: 1
+    NVTE_FUSED_ATTN: 0
+    MACA_SMALL_PAGESIZE_ENABLE: 1
+    MCCL_MAX_NCHANNELS: 18
+    MCCL_P2P_LEVEL: SYS
+    PYTORCH_ENABLE_SAME_RAND_CONF: multiprocessosr_count:114,maxthreads_per_multiprocessor:2048
+    NVTE_ALLOW_NONDETERMINISTIC_ALGO: 0
+    GLOO_SOCKET_IFNAME: bond0
+    MCCL_SOCKET_IFNAME: bond0
+    MCCL_IB_HCA: mlx5_101,mlx5_102,mlx5_103,mlx5_104,mlx5_105,mlx5_106,mlx5_107,mlx5_108
+    FLAGCX_P2P_LEVEL: SYS
+    FLAGCX_GLOO_SOCKET_IFNAME: bond0
+    FLAGCX_SOCKET_IFNAME: bond0
+    FLAGCX_IB_HCA: mlx5_101,mlx5_102,mlx5_103,mlx5_104,mlx5_105,mlx5_106,mlx5_107,mlx5_108
+    FLAGCX_MAX_NCHANNELS: 18
+    FLAGCX_ENABLE_TOPO_DETECT: TRUE
+
+action: run
+
+hydra:
+  run:
+    dir: ${experiment.exp_dir}/hydra
