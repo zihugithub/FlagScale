@@ -22,7 +22,8 @@ ascend910:
       benchmark: {}
       inference:
         qwen3: ["4b_tp1_ascend"]
-      serve: {}
+      serve:
+        qwen3: ["4b_tp1_ascend"]
     unit:
       # Include patterns: "*" for all, or list specific paths
       include: "*"

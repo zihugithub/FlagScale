@@ -72,11 +72,12 @@ jobs:
 
       - name: Setup FlagScale CLI
         run: |
+          pip install hydra-core==1.3.2
           pip install . --no-build-isolation --root-user-action=ignore
           command -v flagscale || { echo "❌ FlagScale CLI not found"; exit 1; }
         timeout-minutes: 5
 
-      - name: Run inference tests - qwen3 4b_tp2_ascend
+      - name: Run inference tests
         id: inference_qwen3
         run: |
           bash "$GITHUB_WORKSPACE/tests/test_utils/runners/run_tests.sh" \
@@ -85,7 +86,7 @@ jobs:
             --type functional \
             --task inference \
             --model qwen3 \
-            --list 4b_tp2_ascend
+            --list 4b_tp1_ascend
           exit_code=$?
           echo "exit_code=$exit_code" >> $GITHUB_OUTPUT
           exit $exit_code
@@ -97,5 +98,29 @@ jobs:
         with:
           name: inference-logs-${{ github.run_id }}-qwen3
           path: ${{ github.workspace }}/tests/functional_tests/inference/qwen3/test_results
+          retention-days: 7
+          if-no-files-found: warn
+
+      - name: Run serve tests
+        id: serve_qwen3
+        run: |
+          bash "$GITHUB_WORKSPACE/tests/test_utils/runners/run_tests.sh" \
+            --platform "${{ inputs.platform }}" \
+            --device "atlas300i" \
+            --type functional \
+            --task serve \
+            --model qwen3 \
+            --list 4b_tp1_ascend
+          exit_code=$?
+          echo "exit_code=$exit_code" >> $GITHUB_OUTPUT
+          exit $exit_code
+        timeout-minutes: 30
+
+      - name: Upload serve test logs
+        if: always() && steps.serve_qwen3.outcome == 'failure'
+        uses: actions/upload-artifact@v4
+        with:
+          name: serve-logs-${{ github.run_id }}-qwen3
+          path: ${{ github.workspace }}/tests/functional_tests/serve/qwen3/test_results
           retention-days: 7
           if-no-files-found: warn
