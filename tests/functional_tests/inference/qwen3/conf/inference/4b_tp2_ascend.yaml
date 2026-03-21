@@ -4,8 +4,7 @@ llm:
   trust_remote_code: true
   tensor_parallel_size: 2
   pipeline_parallel_size: 1
-  # Use npu_memory_utilization for Ascend NPU (vllm-ascend)
-  npu_memory_utilization: 0.9
+  gpu_memory_utilization: 0.9
   seed: 1234
   # enforce_eager is required on Ascend NPU
   enforce_eager: true
