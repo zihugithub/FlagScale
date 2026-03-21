@@ -14,8 +14,8 @@ ci_inference_image: harbor.baai.ac.cn/flagscale/vllm-plugin-fl:v0.1.0-ascend-ci
 runner_labels:
   - self-hosted
   - Linux
-  - X64
-  - ascend-0
+  - ARM64
+  - ascend-72
   - npus-8
 
 # Container volumes (hardware-specific paths)
