@@ -9,51 +9,65 @@ on:
         description: Platform name (e.g., ascend)
 
 jobs:
-  ascend_tests:
+  checkout_and_config:
+    defaults:
+      run:
+        shell: bash
+    runs-on: ubuntu-latest
+    outputs:
+      ci_image: ${{ steps.config.outputs.ci_inference_image }}
+      runs_on: ${{ steps.config.outputs.runs_on }}
+      container_volumes: ${{ steps.config.outputs.container_volumes }}
+      container_options: ${{ steps.config.outputs.container_options }}
+      inference_test_matrix: ${{ steps.config.outputs.inference_test_matrix }}
+      serve_test_matrix: ${{ steps.config.outputs.serve_test_matrix }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          repository: ${{ github.event.pull_request.head.repo.full_name }}
+          ref: ${{ github.event.pull_request.head.ref }}
+          persist-credentials: false
+
+      - name: Load platform configuration
+        id: config
+        run: |
+          set -euo pipefail
+
+          PLATFORM="${{ inputs.platform }}"
+          CONFIG_FILE=".github/configs/${PLATFORM}.yml"
+
+          if [ ! -f "$CONFIG_FILE" ]; then
+            echo "Error: Platform configuration file not found: $CONFIG_FILE"
+            ls -la .github/configs/
+            exit 1
+          fi
+
+          sudo wget -qO /usr/local/bin/yq \
+            https://github.com/mikefarah/yq/releases/download/v4.45.1/yq_linux_amd64
+          sudo chmod +x /usr/local/bin/yq
+
+          source ./tools/install/utils/load_platform_config.sh
+          load_platform_config "$PLATFORM"
+        timeout-minutes: 5
+
+  functional_tests_inference:
+    needs: checkout_and_config
+    if: fromJson(needs.checkout_and_config.outputs.inference_test_matrix)[0] != null
     defaults:
       run:
         shell: bash
     env:
-      PROJECT_ROOT: /tmp/FlagScale
-    runs-on: ubuntu-latest
+      PROJECT_ROOT: ${{ github.workspace }}
+    runs-on: ${{ fromJson(needs.checkout_and_config.outputs.runs_on) }}
+    strategy:
+      fail-fast: false
+      matrix:
+        test_config: ${{ fromJson(needs.checkout_and_config.outputs.inference_test_matrix) }}
     container:
-      image: harbor.baai.ac.cn/flagscale/vllm-plugin-fl:v0.1.0-ascend-ci
-      ports:
-        - 80
-      volumes:
-        - /home/flagscale_cicd/flask/static:/workspace/report
-        - /home/flagscale_cicd/flask/config:/workspace/config
-        - /home/flagscale_cicd/docker/docker_build/docker_data:/home/gitlab-runner/data
-        - /home/flagscale_cicd/docker/docker_build/docker_tokenizers:/home/gitlab-runner/tokenizers
-        - /usr/local/Ascend/driver:/usr/local/Ascend/driver:ro
-        - /usr/local/Ascend/add-ons:/usr/local/Ascend/add-ons:ro
-        - /usr/local/sbin/npu-smi:/usr/local/sbin/npu-smi:ro
-      options: >-
-        --device /dev/davinci0
-        --device /dev/davinci1
-        --device /dev/davinci2
-        --device /dev/davinci3
-        --device /dev/davinci4
-        --device /dev/davinci5
-        --device /dev/davinci6
-        --device /dev/davinci7
-        --device /dev/davinci8
-        --device /dev/davinci9
-        --device /dev/davinci10
-        --device /dev/davinci11
-        --device /dev/davinci12
-        --device /dev/davinci13
-        --device /dev/davinci14
-        --device /dev/davinci15
-        --device /dev/davinci_manager
-        --device /dev/devmm_svm
-        --device /dev/hisi_hdc
-        --privileged
-        --ipc=host
-        --network=host
-        --shm-size=500g
-        --user root
-        --ulimit nofile=65535:65535
+      image: ${{ needs.checkout_and_config.outputs.ci_image }}
+      volumes: ${{ fromJson(needs.checkout_and_config.outputs.container_volumes) }}
+      options: ${{ needs.checkout_and_config.outputs.container_options }}
 
     steps:
       - name: Checkout code
@@ -62,65 +76,137 @@ jobs:
           repository: ${{ github.event.pull_request.head.repo.full_name }}
           ref: ${{ github.event.pull_request.head.ref }}
           persist-credentials: false
-          clean: true
-          lfs: false
-          submodules: false
-          set-safe-directory: true
-
-      - name: Set safe directory
-        run: git config --global --add safe.directory $GITHUB_WORKSPACE
 
       - name: Setup FlagScale CLI
         run: |
           pip install hydra-core==1.3.2
           pip install . --no-build-isolation --root-user-action=ignore
-          command -v flagscale || { echo "❌ FlagScale CLI not found"; exit 1; }
+          command -v flagscale || { echo "FlagScale CLI not found"; exit 1; }
         timeout-minutes: 5
 
       - name: Run inference tests
-        id: inference_qwen3
+        id: functional_test
         run: |
-          bash "$GITHUB_WORKSPACE/tests/test_utils/runners/run_tests.sh" \
-            --platform "${{ inputs.platform }}" \
-            --device "atlas300i" \
+          set -euo pipefail
+          cd $PROJECT_ROOT
+
+          PLATFORM='${{ inputs.platform }}'
+          DEVICE='${{ matrix.test_config.device }}'
+          TASK='${{ matrix.test_config.task }}'
+          MODEL='${{ matrix.test_config.model }}'
+          CASE='${{ matrix.test_config.case }}'
+
+          echo "Running functional tests for inference"
+          echo "Platform: $PLATFORM"
+          echo "Device: $DEVICE"
+          echo "Task: $TASK"
+          echo "Model: $MODEL"
+          echo "Case: $CASE"
+
+          bash "$PROJECT_ROOT/tests/test_utils/runners/run_tests.sh" \
+            --platform "$PLATFORM" \
+            --device "$DEVICE" \
             --type functional \
-            --task inference \
-            --model qwen3 \
-            --list 4b_tp1_ascend
+            --task "$TASK" \
+            --model "$MODEL" \
+            --list "$CASE"
           exit_code=$?
+
+          if [ $exit_code -eq 0 ]; then
+            echo "Functional tests passed for $PLATFORM/$DEVICE/$TASK/$MODEL/$CASE"
+          else
+            echo "Functional tests failed for $PLATFORM/$DEVICE/$TASK/$MODEL/$CASE (exit code: $exit_code)"
+          fi
+
           echo "exit_code=$exit_code" >> $GITHUB_OUTPUT
           exit $exit_code
         timeout-minutes: 30
 
       - name: Upload inference test logs
-        if: always() && steps.inference_qwen3.outcome == 'failure'
+        if: always() && steps.functional_test.outcome == 'failure'
         uses: actions/upload-artifact@v4
         with:
-          name: inference-logs-${{ github.run_id }}-qwen3
-          path: ${{ github.workspace }}/tests/functional_tests/inference/qwen3/test_results
+          name: inference-logs-${{ github.run_id }}-${{ matrix.test_config.model }}-${{ matrix.test_config.case }}
+          path: ${{ env.PROJECT_ROOT }}/tests/functional_tests/${{ matrix.test_config.task }}/${{ matrix.test_config.model }}/test_results
           retention-days: 7
           if-no-files-found: warn
 
-      - name: Run serve tests
-        id: serve_qwen3
+  functional_tests_serve:
+    needs: checkout_and_config
+    if: fromJson(needs.checkout_and_config.outputs.serve_test_matrix)[0] != null
+    defaults:
+      run:
+        shell: bash
+    env:
+      PROJECT_ROOT: ${{ github.workspace }}
+    runs-on: ${{ fromJson(needs.checkout_and_config.outputs.runs_on) }}
+    strategy:
+      fail-fast: false
+      matrix:
+        test_config: ${{ fromJson(needs.checkout_and_config.outputs.serve_test_matrix) }}
+    container:
+      image: ${{ needs.checkout_and_config.outputs.ci_image }}
+      volumes: ${{ fromJson(needs.checkout_and_config.outputs.container_volumes) }}
+      options: ${{ needs.checkout_and_config.outputs.container_options }}
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          repository: ${{ github.event.pull_request.head.repo.full_name }}
+          ref: ${{ github.event.pull_request.head.ref }}
+          persist-credentials: false
+
+      - name: Setup FlagScale CLI
         run: |
-          bash "$GITHUB_WORKSPACE/tests/test_utils/runners/run_tests.sh" \
-            --platform "${{ inputs.platform }}" \
-            --device "atlas300i" \
+          pip install hydra-core==1.3.2
+          pip install . --no-build-isolation --root-user-action=ignore
+          command -v flagscale || { echo "FlagScale CLI not found"; exit 1; }
+        timeout-minutes: 5
+
+      - name: Run serve tests
+        id: functional_test
+        run: |
+          set -euo pipefail
+          cd $PROJECT_ROOT
+
+          PLATFORM='${{ inputs.platform }}'
+          DEVICE='${{ matrix.test_config.device }}'
+          TASK='${{ matrix.test_config.task }}'
+          MODEL='${{ matrix.test_config.model }}'
+          CASE='${{ matrix.test_config.case }}'
+
+          echo "Running functional tests for serve"
+          echo "Platform: $PLATFORM"
+          echo "Device: $DEVICE"
+          echo "Task: $TASK"
+          echo "Model: $MODEL"
+          echo "Case: $CASE"
+
+          bash "$PROJECT_ROOT/tests/test_utils/runners/run_tests.sh" \
+            --platform "$PLATFORM" \
+            --device "$DEVICE" \
             --type functional \
-            --task serve \
-            --model qwen3 \
-            --list 4b_tp1_ascend
+            --task "$TASK" \
+            --model "$MODEL" \
+            --list "$CASE"
           exit_code=$?
+
+          if [ $exit_code -eq 0 ]; then
+            echo "Functional tests passed for $PLATFORM/$DEVICE/$TASK/$MODEL/$CASE"
+          else
+            echo "Functional tests failed for $PLATFORM/$DEVICE/$TASK/$MODEL/$CASE (exit code: $exit_code)"
+          fi
+
           echo "exit_code=$exit_code" >> $GITHUB_OUTPUT
           exit $exit_code
         timeout-minutes: 30
 
       - name: Upload serve test logs
-        if: always() && steps.serve_qwen3.outcome == 'failure'
+        if: always() && steps.functional_test.outcome == 'failure'
         uses: actions/upload-artifact@v4
         with:
-          name: serve-logs-${{ github.run_id }}-qwen3
-          path: ${{ github.workspace }}/tests/functional_tests/serve/qwen3/test_results
+          name: serve-logs-${{ github.run_id }}-${{ matrix.test_config.model }}-${{ matrix.test_config.case }}
+          path: ${{ env.PROJECT_ROOT }}/tests/functional_tests/${{ matrix.test_config.task }}/${{ matrix.test_config.model }}/test_results
           retention-days: 7
           if-no-files-found: warn

@@ -51,6 +51,7 @@ container_options: >-
   --device /dev/hisi_hdc
   --privileged
   --ipc=host
+  --network=host
   --shm-size=500g
   --hostname flagscale_cicd
   --user root
@@ -70,4 +71,5 @@ env_names:
   train: ""
   hetero_train: ""
   inference: ""
+  serve: ""
   rl: ""
