@@ -2,7 +2,7 @@ name: ascend_tests
 
 on:
   push:
-    branches: ["main"]
+    branches: ["hw-ascend-inference"]
   pull_request:
     branches: ["main"]
 
