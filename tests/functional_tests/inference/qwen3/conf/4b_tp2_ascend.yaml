@@ -11,8 +11,7 @@ experiment:
     entrypoint: flagscale/inference/inference_llm.py
   runner:
     hostfile: null
-  cmds:
-    before_start: null
+
   envs:
     HYDRA_FULL_ERROR: 1
     # Ascend NPU parallel control
@@ -29,8 +28,8 @@ experiment:
     MKL_NUM_THREADS: 1
     OMP_NUM_THREADS: 1
     NUMEXPR_NUM_THREADS: 1
-    # vllm-ascend
-    VLLM_USE_V1: 1
+    # vllm-ascend v0.1.0 does not support V1 engine; use V0
+    VLLM_USE_V1: 0
 
 action: run
 
