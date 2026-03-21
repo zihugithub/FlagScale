@@ -21,7 +21,7 @@ ascend910:
       hetero_train: {}
       benchmark: {}
       inference:
-        qwen3: ["4b_tp2_ascend"]
+        qwen3: ["4b_tp1_ascend"]
       serve: {}
     unit:
       # Include patterns: "*" for all, or list specific paths

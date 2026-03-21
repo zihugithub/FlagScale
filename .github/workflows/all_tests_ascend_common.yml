@@ -9,149 +9,93 @@ on:
         description: Platform name (e.g., ascend)
 
 jobs:
-  checkout_and_config:
+  ascend_tests:
     defaults:
       run:
         shell: bash
+    env:
+      PROJECT_ROOT: /tmp/FlagScale
     runs-on: ubuntu-latest
-    outputs:
-      ci_inference_image: ${{ steps.config.outputs.ci_inference_image }}
-      runs_on: ${{ steps.config.outputs.runs_on }}
-      container_volumes: ${{ steps.config.outputs.container_volumes }}
-      container_options: ${{ steps.config.outputs.container_options }}
-      inference_test_matrix: ${{ steps.config.outputs.inference_test_matrix }}
-      serve_test_matrix: ${{ steps.config.outputs.serve_test_matrix }}
-      pkg_mgr: ${{ steps.config.outputs.pkg_mgr }}
-      env_path: ${{ steps.config.outputs.env_path }}
-      env_name_inference: ${{ steps.config.outputs.env_name_inference }}
-      env_name_serve: ${{ steps.config.outputs.env_name_serve }}
+    container:
+      image: harbor.baai.ac.cn/flagscale/vllm-plugin-fl:v0.1.0-ascend-ci
+      ports:
+        - 80
+      volumes:
+        - /home/flagscale_cicd/flask/static:/workspace/report
+        - /home/flagscale_cicd/flask/config:/workspace/config
+        - /home/flagscale_cicd/docker/docker_build/docker_data:/home/gitlab-runner/data
+        - /home/flagscale_cicd/docker/docker_build/docker_tokenizers:/home/gitlab-runner/tokenizers
+        - /usr/local/Ascend/driver:/usr/local/Ascend/driver:ro
+        - /usr/local/Ascend/add-ons:/usr/local/Ascend/add-ons:ro
+        - /usr/local/sbin/npu-smi:/usr/local/sbin/npu-smi:ro
+      options: >-
+        --device /dev/davinci0
+        --device /dev/davinci1
+        --device /dev/davinci2
+        --device /dev/davinci3
+        --device /dev/davinci4
+        --device /dev/davinci5
+        --device /dev/davinci6
+        --device /dev/davinci7
+        --device /dev/davinci8
+        --device /dev/davinci9
+        --device /dev/davinci10
+        --device /dev/davinci11
+        --device /dev/davinci12
+        --device /dev/davinci13
+        --device /dev/davinci14
+        --device /dev/davinci15
+        --device /dev/davinci_manager
+        --device /dev/devmm_svm
+        --device /dev/hisi_hdc
+        --privileged
+        --ipc=host
+        --network=host
+        --shm-size=500g
+        --user root
+        --ulimit nofile=65535:65535
+
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
         with:
           repository: ${{ github.event.pull_request.head.repo.full_name }}
           ref: ${{ github.event.pull_request.head.ref }}
-          ssh-strict: true
-          ssh-user: git
           persist-credentials: false
           clean: true
-          sparse-checkout-cone-mode: true
-          fetch-tags: false
-          show-progress: true
           lfs: false
           submodules: false
           set-safe-directory: true
 
-      - name: Cache source code
-        id: cache-source
-        uses: actions/cache@v4
-        with:
-          path: .
-          key: source-code-${{ github.sha }}
+      - name: Set safe directory
+        run: git config --global --add safe.directory $GITHUB_WORKSPACE
 
-      - name: Create source code tarball for distribution
+      - name: Setup FlagScale CLI
         run: |
-          tar -czf /tmp/flagscale-source.tar.gz \
-            --exclude='.git' \
-            --exclude='*.pyc' \
-            --exclude='__pycache__' \
-            .
+          pip install . --no-build-isolation --root-user-action=ignore
+          command -v flagscale || { echo "❌ FlagScale CLI not found"; exit 1; }
+        timeout-minutes: 5
 
-      - name: Upload source code artifact
+      - name: Run inference tests - qwen3 4b_tp2_ascend
+        id: inference_qwen3
+        run: |
+          bash "$GITHUB_WORKSPACE/tests/test_utils/runners/run_tests.sh" \
+            --platform "${{ inputs.platform }}" \
+            --device "atlas300i" \
+            --type functional \
+            --task inference \
+            --model qwen3 \
+            --list 4b_tp2_ascend
+          exit_code=$?
+          echo "exit_code=$exit_code" >> $GITHUB_OUTPUT
+          exit $exit_code
+        timeout-minutes: 30
+
+      - name: Upload inference test logs
+        if: always() && steps.inference_qwen3.outcome == 'failure'
         uses: actions/upload-artifact@v4
         with:
-          name: flagscale-source-${{ github.sha }}
-          path: /tmp/flagscale-source.tar.gz
-          retention-days: 1
-          compression-level: 0
-
-      - name: Load platform configuration
-        id: config
-        run: |
-          set -euo pipefail
-
-          PLATFORM="${{ inputs.platform }}"
-          CONFIG_FILE=".github/configs/${PLATFORM}.yml"
-
-          if [ ! -f "$CONFIG_FILE" ]; then
-            echo "❌ Error: Platform configuration file not found: $CONFIG_FILE"
-            echo "Available configs:"
-            ls -la .github/configs/
-            exit 1
-          fi
-
-          # Install mikefarah/yq (v4) for YAML parsing
-          sudo wget -qO /usr/local/bin/yq https://github.com/mikefarah/yq/releases/download/v4.45.1/yq_linux_amd64
-          sudo chmod +x /usr/local/bin/yq
-          /usr/local/bin/yq --version
-
-          # Source the platform config loading script
-          source ./tools/install/utils/load_platform_config.sh
-
-          # Load configuration and group tests by task
-          load_platform_config "$PLATFORM"
-
-  functional_tests_inference:
-    needs: checkout_and_config
-    if: fromJson(needs.checkout_and_config.outputs.inference_test_matrix)[0] != null
-    uses: ./.github/workflows/functional_tests_inference.yml
-    with:
-      platform: ${{ inputs.platform }}
-      test_matrix: ${{ needs.checkout_and_config.outputs.inference_test_matrix }}
-      image: ${{ needs.checkout_and_config.outputs.ci_inference_image }}
-      runs_on: ${{ needs.checkout_and_config.outputs.runs_on }}
-      container_volumes: ${{ needs.checkout_and_config.outputs.container_volumes }}
-      container_options: ${{ needs.checkout_and_config.outputs.container_options }}
-      source_artifact: flagscale-source-${{ github.sha }}
-      pkg_mgr: ${{ needs.checkout_and_config.outputs.pkg_mgr }}
-      env_name: ${{ needs.checkout_and_config.outputs.env_name_inference }}
-      env_path: ${{ needs.checkout_and_config.outputs.env_path }}
-
-  functional_tests_serve:
-    needs: checkout_and_config
-    if: fromJson(needs.checkout_and_config.outputs.serve_test_matrix)[0] != null
-    uses: ./.github/workflows/functional_tests_serve.yml
-    with:
-      platform: ${{ inputs.platform }}
-      test_matrix: ${{ needs.checkout_and_config.outputs.serve_test_matrix }}
-      image: ${{ needs.checkout_and_config.outputs.ci_inference_image }}
-      runs_on: ${{ needs.checkout_and_config.outputs.runs_on }}
-      container_volumes: ${{ needs.checkout_and_config.outputs.container_volumes }}
-      container_options: ${{ needs.checkout_and_config.outputs.container_options }}
-      source_artifact: flagscale-source-${{ github.sha }}
-      pkg_mgr: ${{ needs.checkout_and_config.outputs.pkg_mgr }}
-      env_name: ${{ needs.checkout_and_config.outputs.env_name_serve }}
-      env_path: ${{ needs.checkout_and_config.outputs.env_path }}
-
-  all_tests_complete:
-    defaults:
-      run:
-        shell: bash
-    needs:
-      - checkout_and_config
-      - functional_tests_inference
-      - functional_tests_serve
-    runs-on: ubuntu-latest
-    if: always()
-    steps:
-      - name: Verify all tests passed
-        run: |
-          failed=false
-
-          if [ "${{ needs.functional_tests_inference.result }}" != "success" ] && \
-             [ "${{ needs.functional_tests_inference.result }}" != "skipped" ]; then
-            echo "❌ Inference functional tests failed"
-            failed=true
-          fi
-
-          if [ "${{ needs.functional_tests_serve.result }}" != "success" ] && \
-             [ "${{ needs.functional_tests_serve.result }}" != "skipped" ]; then
-            echo "❌ Serve functional tests failed"
-            failed=true
-          fi
-
-          if [ "$failed" = "true" ]; then
-            exit 1
-          fi
-
-          echo "✅ All Ascend tests completed successfully!"
+          name: inference-logs-${{ github.run_id }}-qwen3
+          path: ${{ github.workspace }}/tests/functional_tests/inference/qwen3/test_results
+          retention-days: 7
+          if-no-files-found: warn
