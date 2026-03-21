@@ -12,9 +12,9 @@ if not isinstance(_vllm_platforms.current_platform, NPUPlatform):
     _vllm_platforms._current_platform = NPUPlatform()
 
 import sys
-# sys.argv[0] is this script; shift to look like "vllm serve ..."
+
 sys.argv[0] = "vllm"
 
-from vllm.entrypoints.cli.main import main
-
-main()
+if __name__ == "__main__":
+    from vllm.entrypoints.cli.main import main
+    main()
