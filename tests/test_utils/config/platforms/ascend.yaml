@@ -9,11 +9,11 @@
 
 # Define device types available for this platform
 device_types:
-  - atlas300i
+  - ascend910
 
 # Device-specific test configurations
-atlas300i:
-  name: "atlas300i"
+ascend910:
+  name: "ascend910"
   tests:
     functional:
       # Add or remove test cases per model
