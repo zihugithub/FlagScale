@@ -33,8 +33,17 @@ def vllm_serve(args):
     else:
         raise ValueError("Either model must be specified in model config.")
 
+    # For Ascend NPU, use a Python wrapper to force-set NPUPlatform before vllm
+    # imports, since vllm_ascend register() returns a string but the installed
+    # vllm version does not consume the return value to set current_platform.
+    if os.environ.get("VLLM_TARGET_DEVICE", "").lower() == "npu":
+        wrapper = os.path.join(
+            os.path.dirname(__file__), "_npu_vllm_serve_wrapper.py"
+        )
+        command = ["python", wrapper] + command[1:]  # replace "vllm" with wrapper
+
     # Start the subprocess
-    logger.info(f"[Serve]: Starting vllm serve with command: {' '.join(command)}")
+    logger.info(f"[Serve]: Starting vllm serve with command: {' '.join(str(c) for c in command)}")
 
     process = subprocess.Popen(command, stdout=sys.stdout, stderr=sys.stderr)
     pid = os.getpid()
