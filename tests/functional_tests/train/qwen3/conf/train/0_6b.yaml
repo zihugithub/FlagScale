@@ -2,39 +2,36 @@ defaults:
   - data
 
 system:
-  no_shared_fs: ${experiment.runner.no_shared_fs}
-  num_workers: 4
   tensor_model_parallel_size: 1
   pipeline_model_parallel_size: 1
-  context_parallel_size: 1
   disable_bias_linear: true
-  reset_position_ids: True
-  reset_attention_mask: True
+  reset_position_ids: true
+  reset_attention_mask: true
   qk_layernorm: true
-  sequence_parallel: false
-  use_distributed_optimizer: true
-  overlap_grad_reduce: false
-  overlap_param_gather: false
-  finetune: false
+  use_distributed_optimizer: false
   precision:
     bf16: true
     attention_softmax_in_fp32: true
     accumulate_allreduce_grads_in_fp32: true
   logging:
     log_interval: 1
-    tensorboard_log_interval: 1
-    log_throughput: true
-    log_params_norm: true
-    log_num_zeros_in_grad: true
+    no_log_loss_scale_to_tensorboard: true
   checkpoint:
-    save_interval: ${experiment.save_steps}
-    load: ${experiment.load}
-    ckpt_format: ${experiment.ckpt_format}
+    load: null
+    no_save_optim: true
+    no_save_rng: true
+    no_load_optim: true
+    no_load_rng: true
+    save_interval: 100000
+    ckpt_format: torch
+    tensorboard_log_interval: 999999
 
 model:
+  deterministic_mode: true
   transformer_impl: local
   attention_backend: local
   no_persist_layer_norm: true
+  no_check_for_nan_in_loss_and_grad: true
   num_layers: 28
   hidden_size: 1024
   ffn_hidden_size: 3072
@@ -47,27 +44,20 @@ model:
   norm_epsilon: 1e-6
   use_rotary_position_embeddings: true
   rotary_base: 1000000
+  no_rope_fusion: true
   swiglu: true
   normalization: RMSNorm
+  untie_embeddings_and_output_weights: false
+  no_position_embedding: true
   init_method_std: 0.006
   attention_dropout: 0.0
   hidden_dropout: 0.0
   clip_grad: 1.0
-  position_embedding_type: rope
-  untie_embeddings_and_output_weights: false
-  no_position_embedding: true
-  no_rope_fusion: true
-
-  # training
-  seed: ${experiment.seed}
-  micro_batch_size: 1
-  global_batch_size: 1
+  train_iters: 10
   eval_iters: 0
-  train_samples: 100
-
-  check_for_nan_in_loss_and_grad: false
-  no_check_for_nan_in_loss_and_grad: true
-  rerun_mode: disabled
+  micro_batch_size: 1
+  global_batch_size: 2
+  seed: 42
 
   optimizer:
     weight_decay: 0.1
@@ -76,5 +66,6 @@ model:
     lr_scheduler:
       lr: 1.0e-5
       min_lr: 1.0e-6
-      lr_warmup_samples: 50
+      lr_warmup_samples: 0
+      lr_warmup_fraction: 0.01
       lr_decay_style: cosine

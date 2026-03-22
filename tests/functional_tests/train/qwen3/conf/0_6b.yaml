@@ -3,40 +3,30 @@ defaults:
   - train: 0_6b
 
 experiment:
-  exp_name: Qwen3-0.6b-Train-MetaX
-  seed: 42
-  save_steps: 10000
-  load: null
-  exp_dir: /workspace/Qwen3/outputs/Qwen3-0.6b-Train-MetaX
-  ckpt_format: torch
+  exp_name: 0_6b
+  exp_dir: tests/functional_tests/train/qwen3/test_results/0_6b
   task:
     type: train
     backend: megatron
     entrypoint: flagscale/train/megatron/train_gpt.py
   runner:
-    nnodes: 1
-    nproc_per_node: 1
-    no_shared_fs: false
-    rdzv_backend: static
-    hostfile: null
-  cmds:
-    before_start: ulimit -n 1048576
+    ssh_port: null
+  shell_cmds: null
   envs:
-    LOGLEVEL: "INFO"
-    CUCC_PATH: "/opt/maca/tools/cu-bridge"
-    CUDA_PATH: "/opt/maca/tools/cu-bridge"
-    DEVINFO_ROOT: "/opt/maca"
-    LD_LIBRARY_PATH: "/opt/maca/lib:/opt/maca/mxgpu_llvm/lib:/opt/mxdriver/lib:/opt/maca/ompi/lib:/opt/maca/ucx/lib:/opt/mxdriver/lib"
-    MACA_CLANG: "/opt/maca/mxgpu_llvm"
-    MACA_CLANG_PATH: "/opt/maca/mxgpu_llvm/bin"
-    MACA_PATH: "/opt/maca"
-    PATH: "/opt/conda/bin:/opt/maca/tools/cu-bridge:/opt/maca/bin:/opt/maca/mxgpu_llvm/bin:/opt/maca/ompi/bin:/opt/maca/ucx/bin:/opt/mxdriver/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
+    HYDRA_FULL_ERROR: 1
     PYTHONPATH: "/workspace/FlagScale/flagscale/train:/workspace/Megatron-LM-FL:/workspace/FlagScale"
     CUDA_VISIBLE_DEVICES: "0,1"
     CUDA_DEVICE_MAX_CONNECTIONS: 1
-    MACA_SMALL_PAGESIZE_ENABLE: 1
+    CUBLAS_WORKSPACE_CONFIG: ":4096:8"
+    NCCL_ALGO: "Ring"
+    NVTE_APPLY_QK_LAYER_SCALING: 0
     NVTE_ALLOW_NONDETERMINISTIC_ALGO: 0
-
+    NVTE_FLASH_ATTN: 0
+    NVTE_FUSED_ATTN: 0
+    CUDNN_BENCHMARK: "false"
+    CUDNN_DETERMINISTIC: "true"
+  cmds:
+    before_start: ""
 action: run
 
 hydra:
