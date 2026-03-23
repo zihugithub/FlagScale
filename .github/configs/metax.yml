@@ -6,9 +6,9 @@ hardware_name: metax
 display_name: "MetaX C500 Tests"
 
 # Docker images for MetaX C500 (MACA-based)
-ci_image: localhost:5000/megatron-lm-with-te:v1
-ci_train_image: localhost:5000/megatron-lm-with-te:v1
-ci_inference_image: localhost:5000/megatron-lm-with-te:v1
+ci_image: localhost:5000/megatron-lm-with-te:202603231839
+ci_train_image: localhost:5000/megatron-lm-with-te:202603231839
+ci_inference_image: localhost:5000/megatron-lm-with-te:202603231839
 
 # Runner labels for MetaX C500 hardware
 runner_labels:
