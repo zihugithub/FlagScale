@@ -103,7 +103,6 @@ jobs:
   # CLI validation runs first (outside virtual env) as a gate for all subsequent tests
   cli_validation:
     needs: checkout_and_config
-    if: fromJson(needs.checkout_and_config.outputs.device_types)[0] != null
     uses: ./.github/workflows/functional_tests_cli.yml
     with:
       platform: ${{ inputs.platform }}

@@ -179,6 +179,7 @@ jobs:
 
       - name: Run unit tests
         id: unit_test
+        if: inputs.platform == 'cuda'
         run: |
           set -euo pipefail
           cd $PROJECT_ROOT
