@@ -182,6 +182,16 @@ jobs:
         run: |
           set -euo pipefail
           cd $PROJECT_ROOT
+
+          PKG_MGR='${{ inputs.pkg_mgr }}'
+          ENV_NAME='${{ inputs.env_name }}'
+          ENV_PATH='${{ inputs.env_path }}'
+
+          echo "Installing dependencies for training"
+          echo "Package Manager: $PKG_MGR"
+          echo "Environment Name: $ENV_NAME"
+          echo "Environment Path: $ENV_PATH"
+
           # Source environment utilities
           source ./tools/install/utils/pyenv_utils.sh
 
