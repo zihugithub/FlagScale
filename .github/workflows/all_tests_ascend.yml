@@ -12,7 +12,7 @@ concurrency:
 
 jobs:
   run_tests:
-    uses: ./.github/workflows/all_tests_ascend_common.yml
+    uses: ./.github/workflows/all_tests_common.yml
     with:
       platform: ascend
 
