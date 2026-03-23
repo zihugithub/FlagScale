@@ -109,6 +109,7 @@ jobs:
 
       - name: Set safe directory
         run: |
+          apt update && apt install git -y
           git config --global --add safe.directory $PROJECT_ROOT
 
       - name: Install dependencies for training
