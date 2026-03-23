@@ -123,8 +123,15 @@ jobs:
           # Activate environment based on package manager
           case "$PKG_MGR" in
             conda)
-              if [ -n "$ENV_NAME" ] && [ -n "$ENV_PATH" ]; then
-                activate_conda "$ENV_NAME" "$ENV_PATH" || { echo "❌ Conda activation failed"; exit 1; }
+              if [ -n "$ENV_NAME" ]; then
+                if [ -z "$ENV_PATH" ]; then
+                  ENV_PATH=$(conda info --base 2>/dev/null) || true
+                fi
+                if [ -n "$ENV_PATH" ]; then
+                  activate_conda "$ENV_NAME" "$ENV_PATH" || { echo "❌ Conda activation failed"; exit 1; }
+                else
+                  echo "❌ Cannot determine conda base path"; exit 1
+                fi
               fi
               ;;
             uv)
@@ -164,8 +171,15 @@ jobs:
           # Activate environment based on package manager
           case "$PKG_MGR" in
             conda)
-              if [ -n "$ENV_NAME" ] && [ -n "$ENV_PATH" ]; then
-                activate_conda "$ENV_NAME" "$ENV_PATH" || echo "⚠️  Conda activation failed"
+              if [ -n "$ENV_NAME" ]; then
+                if [ -z "$ENV_PATH" ]; then
+                  ENV_PATH=$(conda info --base 2>/dev/null) || true
+                fi
+                if [ -n "$ENV_PATH" ]; then
+                  activate_conda "$ENV_NAME" "$ENV_PATH" || echo "⚠️  Conda activation failed"
+                else
+                  echo "⚠️  Cannot determine conda base path"
+                fi
               fi
               ;;
             uv)
