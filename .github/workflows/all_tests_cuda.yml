@@ -2,7 +2,7 @@ name: cuda_tests
 
 on:
   push:
-    branches: ["add-multi-chip-test"]
+    branches: ["main"]
   pull_request:
     branches: ["main"]
 
