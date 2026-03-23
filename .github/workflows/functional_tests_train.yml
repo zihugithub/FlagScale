@@ -221,6 +221,22 @@ jobs:
           command -v flagscale || { echo "FlagScale CLI not found"; exit 1; }
         timeout-minutes: 5
 
+      - name: Fix hostname resolution for distributed training
+        if: inputs.platform == 'metax'
+        run: |
+          # When the container uses --uts=host, the container's hostname is the
+          # physical machine name. c10d calls gethostbyname() on this hostname
+          # during rendezvous; if DNS can't resolve it (err=-3 EAI_AGAIN), all
+          # worker sockets fail to connect.
+          # Fix: map the current hostname to 127.0.0.1 in /etc/hosts.
+          HOSTNAME=$(hostname)
+          if ! grep -q "^127\.0\.0\.1\s.*\b${HOSTNAME}\b" /etc/hosts 2>/dev/null; then
+            echo "127.0.0.1 ${HOSTNAME}" >> /etc/hosts
+            echo "✅ Added '127.0.0.1 ${HOSTNAME}' to /etc/hosts"
+          else
+            echo "ℹ️  ${HOSTNAME} already mapped in /etc/hosts"
+          fi
+
       - name: Run functional tests
         id: functional_test
         run: |
