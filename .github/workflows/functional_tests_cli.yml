@@ -113,6 +113,7 @@ jobs:
           ENV_PATH='${{ inputs.env_path }}'
 
           echo "Installing FlagScale CLI"
+          echo "Installing dependencies for training"
           echo "Package Manager: $PKG_MGR"
           echo "Environment Name: $ENV_NAME"
           echo "Environment Path: $ENV_PATH"
@@ -123,15 +124,8 @@ jobs:
           # Activate environment based on package manager
           case "$PKG_MGR" in
             conda)
-              if [ -n "$ENV_NAME" ]; then
-                if [ -z "$ENV_PATH" ]; then
-                  ENV_PATH=$(conda info --base 2>/dev/null) || true
-                fi
-                if [ -n "$ENV_PATH" ]; then
-                  activate_conda "$ENV_NAME" "$ENV_PATH" || { echo "❌ Conda activation failed"; exit 1; }
-                else
-                  echo "❌ Cannot determine conda base path"; exit 1
-                fi
+              if [ -n "$ENV_NAME" ] && [ -n "$ENV_PATH" ]; then
+                activate_conda "$ENV_NAME" "$ENV_PATH" || { echo "❌ Conda activation failed"; exit 1; }
               fi
               ;;
             uv)
@@ -169,26 +163,20 @@ jobs:
           source ./tools/install/utils/pyenv_utils.sh
 
           # Activate environment based on package manager
+          # Activate environment based on package manager
           case "$PKG_MGR" in
             conda)
-              if [ -n "$ENV_NAME" ]; then
-                if [ -z "$ENV_PATH" ]; then
-                  ENV_PATH=$(conda info --base 2>/dev/null) || true
-                fi
-                if [ -n "$ENV_PATH" ]; then
-                  activate_conda "$ENV_NAME" "$ENV_PATH" || echo "⚠️  Conda activation failed"
-                else
-                  echo "⚠️  Cannot determine conda base path"
-                fi
+              if [ -n "$ENV_NAME" ] && [ -n "$ENV_PATH" ]; then
+                activate_conda "$ENV_NAME" "$ENV_PATH" || { echo "❌ Conda activation failed"; exit 1; }
               fi
               ;;
             uv)
               if [ -n "$ENV_PATH" ] && [ -d "$ENV_PATH" ]; then
-                activate_uv_env "$ENV_PATH" || echo "⚠️  UV activation failed"
+                activate_uv_env "$ENV_PATH" || { echo "❌ UV activation failed"; exit 1; }
               fi
               ;;
             pip)
-              echo "ℹ️  Running tests with pip/system Python"
+              echo "Using system Python with pip"
               ;;
           esac
 
