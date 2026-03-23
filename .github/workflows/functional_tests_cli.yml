@@ -93,29 +93,9 @@ jobs:
           set -euo pipefail
           cd $PROJECT_ROOT
 
-          # Source environment utilities
-          source ./tools/install/utils/pyenv_utils.sh
-
-          # Activate environment based on package manager
-          case "$PKG_MGR" in
-            conda)
-              if [ -n "$ENV_NAME" ]; then
-                activate_conda "$ENV_NAME" "$ENV_PATH" || echo "⚠️  Conda activation failed"
-              fi
-              ;;
-            uv)
-              if [ -n "$ENV_PATH" ] && [ -d "$ENV_PATH" ]; then
-                activate_uv_env "$ENV_PATH" || echo "⚠️  UV activation failed"
-              fi
-              ;;
-            pip)
-              echo "ℹ️  Running tests with pip/system Python"
-              ;;
-          esac
-
-          # Display Python environment info
-          echo "Python location: $(which python)"
-          echo "Python version: $(python --version)"
+          echo "Installing FlagScale CLI (outside virtual environment)"
+          echo "Python location: $(which python3)"
+          echo "Python version: $(python3 --version)"
 
           # Install FlagScale CLI using system pip
           pip install . --no-build-isolation --root-user-action=ignore || { echo "❌ FlagScale CLI install failed"; exit 1; }
