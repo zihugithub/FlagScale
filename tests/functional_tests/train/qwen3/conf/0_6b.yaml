@@ -14,7 +14,6 @@ experiment:
   shell_cmds: null
   envs:
     HYDRA_FULL_ERROR: 1
-    PYTHONPATH: "/workspace/FlagScale/flagscale/train:/workspace/Megatron-LM-FL:/workspace/FlagScale"
     CUDA_VISIBLE_DEVICES: "0,1"
     CUDA_DEVICE_MAX_CONNECTIONS: 1
     CUBLAS_WORKSPACE_CONFIG: ":4096:8"
@@ -26,7 +25,7 @@ experiment:
     CUDNN_BENCHMARK: "false"
     CUDNN_DETERMINISTIC: "true"
   cmds:
-    before_start: ""
+    before_start: 'export PYTHONPATH=\${MEGATRON_LM_PATH:-/home/gitlab-runner/tokenizers/Megatron-LM-FL}:$PYTHONPATH'
 action: run
 
 hydra:
