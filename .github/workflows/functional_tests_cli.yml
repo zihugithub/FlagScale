@@ -95,11 +95,11 @@ jobs:
           cd $PROJECT_ROOT
 
           echo "Installing FlagScale CLI (outside virtual environment)"
-          echo "Python location: $(which python)"
-          echo "Python version: $(python --version)"
+          echo "Python location: $(which python3)"
+          echo "Python version: $(python3 --version)"
 
           # Install FlagScale CLI using system pip
-          pip install . --no-build-isolation --root-user-action=ignore || { echo "❌ FlagScale CLI install failed"; exit 1; }
+          pip3 install . --no-build-isolation --root-user-action=ignore || { echo "❌ FlagScale CLI install failed"; exit 1; }
 
           # Verify installation
           command -v flagscale || { echo "❌ FlagScale CLI not found in PATH"; exit 1; }
@@ -113,8 +113,8 @@ jobs:
           cd $PROJECT_ROOT
 
           echo "Validating CLI (outside virtual environment)"
-          echo "Python location: $(which python)"
-          echo "Python version: $(python --version)"
+          echo "Python location: $(which python3)"
+          echo "Python version: $(python3 --version)"
 
           failed=false
 
@@ -158,7 +158,7 @@ jobs:
           echo "=========================================="
           echo "Test: CLI unit tests (pytest)"
           echo "=========================================="
-          pip install pytest pytest-mock --root-user-action=ignore || { echo "❌ pytest install failed"; exit 1; }
+          pip3 install pytest pytest-mock --root-user-action=ignore || { echo "❌ pytest install failed"; exit 1; }
           if pytest tests/unit_tests/test_cli.py -v; then
             echo "✅ CLI unit tests passed"
           else
