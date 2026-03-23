@@ -17,7 +17,7 @@ system:
     log_interval: 1
     no_log_loss_scale_to_tensorboard: true
   checkpoint:
-    load: null
+    load: /home/gitlab-runner/checkpoints/qwen3-0.6b-mcore
     no_save_optim: true
     no_save_rng: true
     no_load_optim: true
@@ -28,10 +28,10 @@ system:
 
 model:
   deterministic_mode: true
-  transformer_impl: local
-  attention_backend: local
-  no_persist_layer_norm: true
+  transformer_impl: transformer_engine
+  attention_backend: unfused
   no_check_for_nan_in_loss_and_grad: true
+  no_gradient_accumulation_fusion: true
   num_layers: 28
   hidden_size: 1024
   ffn_hidden_size: 3072
