@@ -24,7 +24,7 @@ container_volumes:
   - /home/flagscale_cicd/docker/docker_build/docker_tokenizers:/home/gitlab-runner/tokenizers
 
 # Container options for MetaX C500 (MACA runtime)
-container_options: "--uts=host --ipc=host --privileged --group-add video --shm-size=100g --ulimit memlock=-1 --security-opt seccomp=unconfined --security-opt apparmor=unconfined --device=/dev/dri --device=/dev/mxcd --device=/dev/infiniband --user root --ulimit nofile=65535:65535"
+container_options: "--hostname=flagscale-ci --ipc=host --privileged --group-add video --shm-size=100g --ulimit memlock=-1 --security-opt seccomp=unconfined --security-opt apparmor=unconfined --device=/dev/dri --device=/dev/mxcd --device=/dev/infiniband --user root --ulimit nofile=65535:65535"
 
 # =============================================================================
 # Package Manager Configuration
