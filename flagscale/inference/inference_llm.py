@@ -1,3 +1,20 @@
+import os
+
+# vllm-ascend 0.13.x register() returns a class path string but some vllm
+# versions do not consume the return value, leaving current_platform as
+# UnspecifiedPlatform.  Force-set NPUPlatform when running on Ascend NPU.
+if os.environ.get("VLLM_TARGET_DEVICE", "").lower() == "npu":
+    try:
+        import torch_npu  # noqa: F401
+        from vllm_ascend.platform import NPUPlatform
+
+        import vllm.platforms as _vllm_platforms
+
+        if not isinstance(_vllm_platforms.current_platform, NPUPlatform):
+            _vllm_platforms._current_platform = NPUPlatform()
+    except Exception:
+        pass
+
 from vllm import LLM
 from vllm.sampling_params import SamplingParams
 

@@ -155,7 +155,7 @@ def test_train_equal(path, task, model, case):
 
     print(f"result_path: {result_path}")
 
-    with open(result_path, "r") as file:
+    with open(result_path, "r", errors="replace") as file:
         lines = file.readlines()
 
     # Load gold values first to determine which metrics to extract
@@ -267,7 +267,7 @@ def test_inference_equal(path, task, model, case):
     # Assertion check: ensure the inference output file exists
     assert os.path.exists(result_path), f"Failed to find 'host_0_localhost.output' at {result_path}"
 
-    with open(result_path, "r") as file:
+    with open(result_path, "r", errors="replace") as file:
         lines = file.readlines()
 
     # Extract inference output content within the marker range
@@ -471,7 +471,7 @@ def test_benchmark_equal(path, task, model, case, platform, device):
 
     assert os.path.exists(result_path), f"Failed to find 'host_0_localhost.output' at {result_path}"
 
-    with open(result_path, "r") as file:
+    with open(result_path, "r", errors="replace") as file:
         lines = file.readlines()
 
     # Load gold values (performance baselines)
@@ -640,7 +640,7 @@ def test_rl_equal(path, task, model, case):
     assert os.path.exists(result_path), f"Failed to find 'host_0_localhost.output' at {result_path}"
 
     # 2. Read log file content
-    with open(result_path, "r") as file:
+    with open(result_path, "r", errors="replace") as file:
         lines = file.readlines()
 
     # 3. Initialize result storage dictionary for extracted reward metrics
