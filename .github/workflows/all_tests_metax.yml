@@ -2,7 +2,7 @@ name: metax_c500_tests
 
 on:
   push:
-    branches: ["main", "metax-c500-train"]
+    branches: ["main"]
   pull_request:
     branches: ["main"]
 
