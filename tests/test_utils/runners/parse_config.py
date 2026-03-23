@@ -112,7 +112,12 @@ def get_device_types(platform):
         raise ValueError("Platform must be specified. Available platforms: cuda")
 
     script_dir = os.path.dirname(os.path.abspath(__file__))
-    platform_file_map = {"cuda": "cuda.yaml"}
+    platform_file_map = {
+        "cuda": "cuda.yaml",
+        "ascend": "ascend.yaml",
+        "ascend910": "ascend.yaml",
+        "metax": "metax.yaml",
+    }
 
     yaml_file = platform_file_map.get(platform, f"{platform}.yaml")
     config_file = os.path.join(script_dir, "../config/platforms", yaml_file)
@@ -224,7 +229,9 @@ def main():
     parser = argparse.ArgumentParser(
         description="Parse test configuration with platform and device support"
     )
-    parser.add_argument("--platform", required=True, help="Platform type (cuda, etc.) - REQUIRED")
+    parser.add_argument(
+        "--platform", required=True, help="Platform type (cuda, ascend, metax, etc.) - REQUIRED"
+    )
     parser.add_argument("--device", help="Device type within platform (a100, a800, h100, etc.)")
     parser.add_argument("--type", choices=["unit", "functional", "device_types"], help="Query type")
     parser.add_argument("--task", help="Functional task name (train, hetero_train)")

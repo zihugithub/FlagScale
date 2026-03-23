@@ -112,6 +112,7 @@ jobs:
           git config --global --add safe.directory $PROJECT_ROOT
 
       - name: Install dependencies for training
+        if: inputs.platform == 'cuda'
         run: |
           set -euo pipefail
           cd $PROJECT_ROOT
@@ -175,6 +176,16 @@ jobs:
 
           echo "Environment ready for train tests"
         timeout-minutes: 30
+
+      - name: Setup FlagScale CLI
+        if: inputs.platform == 'metax'
+        run: |
+          set -euo pipefail
+          cd $PROJECT_ROOT
+          pip install hydra-core==1.3.2
+          pip install . --no-build-isolation --root-user-action=ignore
+          command -v flagscale || { echo "FlagScale CLI not found"; exit 1; }
+        timeout-minutes: 5
 
       - name: Run functional tests
         id: functional_test
