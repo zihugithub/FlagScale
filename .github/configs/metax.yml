@@ -29,14 +29,14 @@ container_options: "--uts=host --ipc=host --privileged --group-add video --shm-s
 # =============================================================================
 # Package Manager Configuration
 # =============================================================================
-pkg_mgr: "pip"
+pkg_mgr: "conda"
 
 # Environment path (conda installation path)
 env_path: ""
 
 # Conda environment names
 env_names:
-  train: ""
+  train: "base"
   hetero_train: ""
   inference: ""
   rl: ""

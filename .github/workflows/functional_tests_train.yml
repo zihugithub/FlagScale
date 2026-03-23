@@ -182,8 +182,32 @@ jobs:
         run: |
           set -euo pipefail
           cd $PROJECT_ROOT
-          python3 -m pip install hydra-core==1.3.2
-          python3 -m pip install . --no-build-isolation --root-user-action=ignore
+          # Source environment utilities
+          source ./tools/install/utils/pyenv_utils.sh
+
+          # Activate environment based on package manager
+          case "$PKG_MGR" in
+            conda)
+              if [ -n "$ENV_NAME" ]; then
+                activate_conda "$ENV_NAME" "$ENV_PATH" || echo "⚠️  Conda activation failed"
+              fi
+              ;;
+            uv)
+              if [ -n "$ENV_PATH" ] && [ -d "$ENV_PATH" ]; then
+                activate_uv_env "$ENV_PATH" || echo "⚠️  UV activation failed"
+              fi
+              ;;
+            pip)
+              echo "ℹ️  Running tests with pip/system Python"
+              ;;
+          esac
+
+          # Display Python environment info
+          echo "Python location: $(which python)"
+          echo "Python version: $(python --version)"
+
+          pip install hydra-core==1.3.2
+          pip install . --no-build-isolation --root-user-action=ignore
           command -v flagscale || { echo "FlagScale CLI not found"; exit 1; }
         timeout-minutes: 5
 
