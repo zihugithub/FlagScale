@@ -111,6 +111,9 @@ jobs:
       container_volumes: ${{ needs.checkout_and_config.outputs.container_volumes }}
       container_options: ${{ needs.checkout_and_config.outputs.container_options }}
       source_artifact: flagscale-source-${{ github.sha }}
+      pkg_mgr: ${{ needs.checkout_and_config.outputs.pkg_mgr }}
+      env_name: ${{ needs.checkout_and_config.outputs.env_name_train }}
+      env_path: ${{ needs.checkout_and_config.outputs.env_path }}
 
   unit_tests:
     needs:

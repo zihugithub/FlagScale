@@ -112,6 +112,7 @@ jobs:
           git config --global --add safe.directory $PROJECT_ROOT
 
       - name: Install dependencies for training
+        if: inputs.platform == 'cuda'
         run: |
           set -euo pipefail
           cd $PROJECT_ROOT
@@ -175,6 +176,50 @@ jobs:
 
           echo "Environment ready for train tests"
         timeout-minutes: 30
+
+      - name: Setup FlagScale CLI
+        if: inputs.platform == 'metax'
+        run: |
+          set -euo pipefail
+          cd $PROJECT_ROOT
+
+          PKG_MGR='${{ inputs.pkg_mgr }}'
+          ENV_NAME='${{ inputs.env_name }}'
+          ENV_PATH='${{ inputs.env_path }}'
+
+          echo "Installing dependencies for training"
+          echo "Package Manager: $PKG_MGR"
+          echo "Environment Name: $ENV_NAME"
+          echo "Environment Path: $ENV_PATH"
+
+          # Source environment utilities
+          source ./tools/install/utils/pyenv_utils.sh
+
+          # Activate environment based on package manager
+          case "$PKG_MGR" in
+            conda)
+              if [ -n "$ENV_NAME" ]; then
+                activate_conda "$ENV_NAME" "$ENV_PATH" || echo "⚠️  Conda activation failed"
+              fi
+              ;;
+            uv)
+              if [ -n "$ENV_PATH" ] && [ -d "$ENV_PATH" ]; then
+                activate_uv_env "$ENV_PATH" || echo "⚠️  UV activation failed"
+              fi
+              ;;
+            pip)
+              echo "ℹ️  Running tests with pip/system Python"
+              ;;
+          esac
+
+          # Display Python environment info
+          echo "Python location: $(which python)"
+          echo "Python version: $(python --version)"
+
+          pip install hydra-core==1.3.2
+          pip install . --no-build-isolation --root-user-action=ignore
+          command -v flagscale || { echo "FlagScale CLI not found"; exit 1; }
+        timeout-minutes: 5
 
       - name: Run functional tests
         id: functional_test

@@ -118,6 +118,7 @@ def get_device_types(platform):
         "cuda": "cuda.yaml",
         "ascend": "ascend.yaml",
         "ascend910": "ascend.yaml",
+        "metax": "metax.yaml",
     }
 
     yaml_file = platform_file_map.get(platform, f"{platform}.yaml")
@@ -231,7 +232,7 @@ def main():
         description="Parse test configuration with platform and device support"
     )
     parser.add_argument(
-        "--platform", required=True, help="Platform type (cuda, ascend, etc.) - REQUIRED"
+        "--platform", required=True, help="Platform type (cuda, ascend, metax, etc.) - REQUIRED"
     )
     parser.add_argument("--device", help="Device type within platform (a100, a800, h100, etc.)")
     parser.add_argument("--type", choices=["unit", "functional", "device_types"], help="Query type")

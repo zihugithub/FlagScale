@@ -206,7 +206,12 @@ def test_train_equal(path, task, model, case):
             # Try to compare what we have
             min_len = min(len(result_values), len(gold_values))
             if min_len > 0:
-                is_close = np.allclose(gold_values[:min_len], result_values[:min_len])
+                gold_entry = gold_result_json.get(key, {})
+                rtol = gold_entry.get("rtol", 1e-5) if isinstance(gold_entry, dict) else 1e-5
+                atol = gold_entry.get("atol", 1e-8) if isinstance(gold_entry, dict) else 1e-8
+                is_close = np.allclose(
+                    gold_values[:min_len], result_values[:min_len], rtol=rtol, atol=atol
+                )
                 diff = np.abs(np.array(gold_values[:min_len]) - np.array(result_values[:min_len]))
                 print(f"\nPartial comparison (first {min_len} values):")
                 print(f"  Status: {'✅ PASS' if is_close else '❌ FAIL'}")
@@ -217,9 +222,15 @@ def test_train_equal(path, task, model, case):
 
         # Calculate differences
         diff = np.abs(np.array(gold_values) - np.array(result_values))
-        is_close = np.allclose(gold_values, result_values)
+        # Support optional per-metric tolerance in the gold values JSON
+        gold_entry = gold_result_json.get(key, {})
+        rtol = gold_entry.get("rtol", 1e-5) if isinstance(gold_entry, dict) else 1e-5
+        atol = gold_entry.get("atol", 1e-8) if isinstance(gold_entry, dict) else 1e-8
+        is_close = np.allclose(gold_values, result_values, rtol=rtol, atol=atol)
 
-        print(f"\nComparison result: {'✅ PASS' if is_close else '❌ FAIL'}")
+        print(
+            f"\nComparison result: {'✅ PASS' if is_close else '❌ FAIL'} (rtol={rtol}, atol={atol})"
+        )
         print(f"  Max diff: {np.max(diff):.6e}")
         print(f"  Mean diff: {np.mean(diff):.6e}")
 

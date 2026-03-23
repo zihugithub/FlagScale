@@ -381,8 +381,9 @@ def validate_args(args, defaults={}):
     update_use_dist_ckpt(args)
 
     if args.attention_backend == AttnBackend.local:
-        assert args.spec[0] == 'local' , '--attention-backend local is only supported with --spec local'
-    
+        if args.spec is not None:
+            assert args.spec[0] == 'local' , '--attention-backend local is only supported with --spec local'
+
     if not enable_hetero:
         total_model_size = args.tensor_model_parallel_size * args.pipeline_model_parallel_size * args.context_parallel_size
 
