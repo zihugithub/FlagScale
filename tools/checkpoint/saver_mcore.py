@@ -293,8 +293,6 @@ def save_checkpoint(queue, args):
 
     if md.true_vocab_size is not None:
         margs.padded_vocab_size = _vocab_size_with_padding(md.true_vocab_size, margs)
-    elif getattr(md, 'checkpoint_args', None) is not None and getattr(md.checkpoint_args, 'padded_vocab_size', None) is not None:
-        margs.padded_vocab_size = md.checkpoint_args.padded_vocab_size
     else:
         # margs.padded_vocab_size will be set in ckpt_plugin.set_embedding_ckpt func
         margs.padded_vocab_size = None

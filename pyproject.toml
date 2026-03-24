@@ -120,5 +120,4 @@ extend-ignore-identifiers-re = [
     ".*thw",
     "nd_*",
     "\\d+[Bb][-]?[Aa]\\d+(\\.\\d+)?[Bb]", # protect 30BA3B
-    "CANN", # Compute Architecture for Neural Networks (Ascend runtime)
 ]

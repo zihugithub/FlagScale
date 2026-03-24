@@ -1670,58 +1670,15 @@ def load_checkpoint(ddp_model, optimizer, opt_param_scheduler, load_arg='load', 
     else:
         print_rank_0('could not find arguments in the checkpoint ...')
 
-    def remap_te_to_local(state_dict):
-        """Remap TransformerEngine fused-layernorm keys to local (unfused) keys.
-        When a checkpoint is saved with transformer_impl=transformer_engine the
-        per-layer layernorm weights are stored fused inside the linear projection:
-          decoder.layers.X.self_attention.linear_qkv.layer_norm_weight
-          decoder.layers.X.mlp.linear_fc1.layer_norm_weight
-        When the model is built with transformer_impl=local those weights live as
-        separate modules:
-          decoder.layers.X.input_layernorm.weight
-          decoder.layers.X.pre_mlp_layernorm.weight
-        This function performs the rename so a TE checkpoint can be loaded into a
-        local-impl model.  Keys that have no mapping are kept as-is; TE _extra_state
-        keys that have no counterpart in the local model are dropped.
-        """
-        new_sd = {}
-        for k, v in state_dict.items():
-            if k.endswith('.self_attention.linear_qkv.layer_norm_weight'):
-                prefix = k[: -len('.self_attention.linear_qkv.layer_norm_weight')]
-                new_sd[prefix + '.input_layernorm.weight'] = v
-            elif k.endswith('.mlp.linear_fc1.layer_norm_weight'):
-                prefix = k[: -len('.mlp.linear_fc1.layer_norm_weight')]
-                new_sd[prefix + '.pre_mlp_layernorm.weight'] = v
-            elif k.endswith('._extra_state'):
-                # TE-specific extra state; not present in local impl – skip silently.
-                continue
-            else:
-                new_sd[k] = v
-        return new_sd
-
     def load_model_state_dict(module, state_dict, strict: bool):
         """Helper function to load state dict with fallback for missing extra states."""
         try:
             module.load_state_dict(state_dict, strict=strict)
-        except Exception:
-            # Try remapping TE fused-layernorm keys to local (unfused) keys, then
-            # load with strict=False to tolerate any remaining harmless mismatches.
-            remapped = remap_te_to_local(state_dict)
-            # Check what keys the model expects vs what we have
-            try:
-                model_keys = set(module.module.state_dict().keys())
-                ckpt_keys = set(remapped.keys())
-                missing = model_keys - ckpt_keys
-                unexpected = ckpt_keys - model_keys
-                if missing:
-                    print(f"[TE->local remap] missing keys ({len(missing)}): {sorted(missing)[:5]}...")
-                if unexpected:
-                    print(f"[TE->local remap] unexpected keys ({len(unexpected)}): {sorted(unexpected)[:5]}...")
-                if not missing and not unexpected:
-                    print("[TE->local remap] all keys matched")
-            except Exception as debug_e:
-                print(f"[TE->local remap] debug check failed: {debug_e}")
-            module.load_state_dict(remapped, strict=False)
+        except Exception as e:
+            if strict:
+                # Fallback support for backward compatibility breaking changes in TransformerEngine
+                load_return = module.load_state_dict(state_dict, strict=False)
+                print(f"load_return: {load_return}")
     # Model.
     strict = False if args.retro_add_retriever else strict
     if not skip_load_to_model_and_opt:
