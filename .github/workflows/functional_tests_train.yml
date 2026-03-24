@@ -177,7 +177,7 @@ jobs:
           echo "Environment ready for train tests"
         timeout-minutes: 30
 
-      - name: Setup FlagScale CLI
+      - name: Install dependencies for serve metax
         if: inputs.platform == 'metax'
         run: |
           set -euo pipefail

@@ -165,7 +165,7 @@ jobs:
 
         timeout-minutes: 5
 
-      - name: Setup FlagScale CLI
+      - name: Install dependencies for serve ascend
         if: inputs.platform == 'ascend'
         run: |
           set -euo pipefail
