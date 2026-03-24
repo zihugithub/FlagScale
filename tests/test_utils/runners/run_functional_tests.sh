@@ -146,7 +146,7 @@ run_test() {
         # For serve tasks, wait for the service to be fully ready before validation
         if [ "$task" = "serve" ]; then
             log_info "Waiting 1 minute for service to be ready..."
-            sleep 1m
+            sleep 10m
         fi
 
         if ! "${validator_cmd[@]}"; then
