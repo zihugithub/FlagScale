@@ -76,6 +76,21 @@ def extract_metrics_from_log(lines, metric_keys=None):
     return results
 
 
+def _resolve_platform_device(gold_result_json, platform, device):
+    """Drill into platform/device-keyed gold values to reach the metric-level dict.
+
+    Supports both flat format ``{"lm loss:": {...}}`` and nested format
+    ``{"cuda": {"a800": {"lm loss:": {...}}}}``.
+    """
+    p = platform if platform and platform != "none" else None
+    if p and p in gold_result_json:
+        gold_result_json = gold_result_json[p]
+        d = device if device and device != "none" else None
+        if d and d in gold_result_json:
+            gold_result_json = gold_result_json[d]
+    return gold_result_json
+
+
 def find_latest_stdout_log(start_path):
     """
     Find the latest stdout.log file in the latest attempt directory.
@@ -135,8 +150,8 @@ def find_latest_stdout_log(start_path):
     return None, latest_attempt
 
 
-@pytest.mark.usefixtures("path", "task", "model", "case")
-def test_train_equal(path, task, model, case):
+@pytest.mark.usefixtures("path", "task", "model", "case", "platform", "device")
+def test_train_equal(path, task, model, case, platform, device):
     """
     Compare training metrics from test run against gold values.
 
@@ -164,6 +179,8 @@ def test_train_equal(path, task, model, case):
 
     with open(gold_value_path, "r") as f:
         gold_result_json = json.load(f)
+
+    gold_result_json = _resolve_platform_device(gold_result_json, platform, device)
 
     # Extract the metric keys from gold values
     metric_keys = list(gold_result_json.keys())
@@ -327,8 +344,8 @@ def test_inference_equal(path, task, model, case):
         assert result_line.rstrip("\n") == gold_value_line.rstrip("\n")
 
 
-@pytest.mark.usefixtures("path", "task", "model", "case")
-def test_serve_equal(path, task, model, case):
+@pytest.mark.usefixtures("path", "task", "model", "case", "platform", "device")
+def test_serve_equal(path, task, model, case, platform, device):
     """
     Verify the output consistency of model serving deployment.
 
@@ -373,6 +390,7 @@ def test_serve_equal(path, task, model, case):
     if os.path.exists(gold_value_path):
         with open(gold_value_path, "r") as f:
             gold_result = json.load(f)
+        gold_result = _resolve_platform_device(gold_result, platform, device)
         print(f"[Serve] gold_value_path: {gold_value_path}")
         print(f"[Serve] gold_result: {gold_result}")
     else:
@@ -493,33 +511,7 @@ def test_benchmark_equal(path, task, model, case, platform, device):
         gold_result_json = json.load(f)
 
     # Extract platform/device-specific gold values (structure: {platform: {device: {metrics}}})
-    def _is_metric_keys(keys):
-        """Metric keys contain ':', device/platform names don't."""
-        return any(":" in k for k in keys)
-
-    top_keys = list(gold_result_json.keys())
-    if top_keys and not _is_metric_keys(top_keys):
-        # Top level is platform classification
-        p = platform if platform and platform != "none" else None
-        assert p, (
-            f"Gold values are platform-classified ({top_keys}) but no --platform was specified"
-        )
-        assert p in gold_result_json, (
-            f"Platform '{p}' not found in gold values. Available: {top_keys}"
-        )
-        gold_result_json = gold_result_json[p]
-
-        # Second level is device classification
-        device_keys = list(gold_result_json.keys())
-        if device_keys and not _is_metric_keys(device_keys):
-            d = device if device and device != "none" else None
-            assert d, (
-                f"Gold values are device-classified ({device_keys}) but no --device was specified"
-            )
-            assert d in gold_result_json, (
-                f"Device '{d}' not found in gold values. Available: {device_keys}"
-            )
-            gold_result_json = gold_result_json[d]
+    gold_result_json = _resolve_platform_device(gold_result_json, platform, device)
 
     metric_keys = list(gold_result_json.keys())
 
@@ -618,8 +610,8 @@ def test_benchmark_equal(path, task, model, case, platform, device):
     )
 
 
-@pytest.mark.usefixtures("path", "task", "model", "case")
-def test_rl_equal(path, task, model, case):
+@pytest.mark.usefixtures("path", "task", "model", "case", "platform", "device")
+def test_rl_equal(path, task, model, case, platform, device):
     """
     Verify the consistency of reward metrics during reinforcement learning (RL) training.
 
@@ -672,6 +664,8 @@ def test_rl_equal(path, task, model, case):
     assert os.path.exists(gold_value_path), f"Failed to find gold result JSON at {gold_value_path}"
     with open(gold_value_path, "r") as f:
         gold_result_json = json.load(f)
+
+    gold_result_json = _resolve_platform_device(gold_result_json, platform, device)
 
     # 6. Print debugging information for troubleshooting
     print("\nResult checking")

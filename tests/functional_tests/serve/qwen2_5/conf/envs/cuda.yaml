@@ -1,0 +1,11 @@
+# @package _global_
+# CUDA platform environment variables for serve/qwen2_5
+experiment:
+  runner:
+    hostfile: null
+  envs:
+    CUDA_DEVICE_MAX_CONNECTIONS: 1
+    no_proxy: "127.0.0.1,localhost"
+    CUDA_VISIBLE_DEVICES: 0,1
+  cmds:
+    before_start: ulimit -n 65535 && source /root/miniconda3/bin/activate flagscale-inference

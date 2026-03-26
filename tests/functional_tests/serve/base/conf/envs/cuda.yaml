@@ -1,0 +1,10 @@
+# @package _global_
+# CUDA platform environment variables for serve/base
+experiment:
+  runner:
+    hostfile: null
+  envs:
+    CUDA_DEVICE_MAX_CONNECTIONS: 1
+    no_proxy: "127.0.0.1,localhost"
+  cmds:
+    before_start: ulimit -n 65535 && source /root/miniconda3/bin/activate flagscale-inference

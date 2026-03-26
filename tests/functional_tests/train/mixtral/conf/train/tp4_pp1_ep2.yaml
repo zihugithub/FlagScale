@@ -6,9 +6,6 @@ system:
   pipeline_model_parallel_size: 1
   expert_model_parallel_size: 2
   sequence_parallel: true
-  use_distributed_optimizer: true
-  precision:
-    bf16: true
   logging:
     log_interval: 1
     no_log_loss_scale_to_tensorboard: true
@@ -19,10 +16,8 @@ system:
     tensorboard_log_interval: 999999
 
 model:
-  attention_backend: unfused
   deterministic_mode: true
   use_mcore_models: true
-  transformer_impl: transformer_engine
   num_layers: 2
   hidden_size: 4096
   ffn_hidden_size: 14336

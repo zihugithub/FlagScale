@@ -16,14 +16,6 @@ system:
   reset_attention_mask: true
   qk_layernorm: true
   sequence_parallel: true
-  use_distributed_optimizer: true
-  overlap_grad_reduce: true
-  overlap_param_gather: true
-  attention_backend: auto
-  precision:
-    bf16: true
-    attention_softmax_in_fp32: true
-    accumulate_allreduce_grads_in_fp32: true
   logging:
     log_interval: 1
     no_log_loss_scale_to_tensorboard: true
@@ -35,7 +27,6 @@ system:
     tensorboard_log_interval: 999999
 
 model:
-  transformer_impl: transformer_engine
   num_layers: 4
   hidden_size: 2048
   num_attention_heads: 16
@@ -54,7 +45,6 @@ model:
   position_embedding_type: rope
   untie_embeddings_and_output_weights: true
   no_position_embedding: true
-  no_rope_fusion: true
 
   # mla args ==================
   multi_latent_attention: true

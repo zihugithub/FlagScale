@@ -1,1 +1,7 @@
-{"response": ". Bruce Lee was a legendary martial artist, actor, and film director who lived from 19"}
+{
+  "cuda": {
+    "a100": {
+      "response": ". Bruce Lee was a legendary martial artist, actor, and film director who lived from 19"
+    }
+  }
+}

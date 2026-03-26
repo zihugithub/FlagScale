@@ -6,7 +6,6 @@ system:
   pipeline_model_parallel_size: 3
   sequence_parallel: True
   disable_bias_linear: True
-  use_distributed_optimizer: True
   hetero:
     enable_hetero: True
     # 3 mesh
@@ -32,12 +31,6 @@ system:
       - [1, 254, 2, 2, 2]
       - [1, 254, 1, 2, 1]
       - [1, 254, 2, 2, 2]
-  precision:
-    fp16: True
-    initial_loss_scale: 522893
-    min_loss_scale: 1.0
-    attention_softmax_in_fp32: True
-    accumulate_allreduce_grads_in_fp32: True
   logging:
     log_interval: 1
     no_log_loss_scale_to_tensorboard: true
@@ -49,10 +42,7 @@ system:
     ckpt_format: torch
 
 model:
-  attention_backend: unfused
-  deterministic_mode: true
   use_mcore_models: true
-  transformer_impl: transformer_engine
   num_layers: 8
   hidden_size: 512
   num_attention_heads: 8

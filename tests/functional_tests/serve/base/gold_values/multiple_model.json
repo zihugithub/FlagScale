@@ -1,1 +1,7 @@
-{"response": "PLACEHOLDER: Replace with actual response from a real composition mode run"}
+{
+  "cuda": {
+    "a100": {
+      "response": "PLACEHOLDER: Replace with actual response from a real composition mode run"
+    }
+  }
+}

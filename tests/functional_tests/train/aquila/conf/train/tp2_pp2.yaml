@@ -2,13 +2,6 @@ system:
   tensor_model_parallel_size: 2
   pipeline_model_parallel_size: 2
   disable_bias_linear: True
-  use_distributed_optimizer: True
-  precision:
-    fp16: True
-    initial_loss_scale: 522893
-    min_loss_scale: 1.0
-    attention_softmax_in_fp32: True
-    accumulate_allreduce_grads_in_fp32: True
   logging:
     log_interval: 1
     no_log_loss_scale_to_tensorboard: true
@@ -19,10 +12,8 @@ system:
     tensorboard_log_interval: 999999
 
 model:
-  attention_backend: unfused
   deterministic_mode: true
   use_mcore_models: true
-  transformer_impl: transformer_engine
   num_layers: 4
   hidden_size: 512
   num_attention_heads: 8
