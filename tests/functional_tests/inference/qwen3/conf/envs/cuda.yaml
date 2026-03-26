@@ -1,5 +1,9 @@
+# @package _global_
 # CUDA platform environment variables for inference/qwen3
 experiment:
+  runner:
+    hostfile: null
+
   envs:
     HYDRA_FULL_ERROR: 1
     CUBLAS_WORKSPACE_CONFIG: ":4096:8"
@@ -23,5 +27,6 @@ experiment:
     TORCH_CUDNN_DETERMINISM: true
     CUDA_LAUNCH_BLOCKING: 1
     NCCL_DEBUG: INFO
+
   cmds:
     before_start: source /root/miniconda3/bin/activate flagscale-inference

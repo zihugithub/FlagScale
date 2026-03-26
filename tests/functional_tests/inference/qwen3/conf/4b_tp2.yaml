@@ -1,5 +1,5 @@
 defaults:
-  - envs: cuda
+  - envs: ${oc.env:FLAGSCALE_PLATFORM,cuda}
   - _self_
   - inference: 4b_tp2
 
@@ -10,8 +10,6 @@ experiment:
     type: inference
     backend: vllm
     entrypoint: flagscale/inference/inference_llm.py
-  runner:
-    hostfile: null
 
 action: run
 
