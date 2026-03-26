@@ -2,7 +2,7 @@ name: cuda_tests
 
 on:
   push:
-    branches: ["main"]
+    branches: ["refactoring_tests_structure-20260326"]
   pull_request:
     branches: ["main"]
 
