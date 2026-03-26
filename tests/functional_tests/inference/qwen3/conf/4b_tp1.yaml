@@ -1,5 +1,5 @@
 defaults:
-  - envs: ${oc.env:FLAGSCALE_PLATFORM,cuda}
+  - envs: ascend
   - _self_
   - inference: 4b_tp1
 
