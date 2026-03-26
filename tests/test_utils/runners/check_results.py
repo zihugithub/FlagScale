@@ -261,8 +261,8 @@ def test_train_equal(path, task, model, case, platform, device):
     assert all_passed, "One or more metrics did not match gold values"
 
 
-@pytest.mark.usefixtures("path", "task", "model", "case")
-def test_inference_equal(path, task, model, case):
+@pytest.mark.usefixtures("path", "task", "model", "case", "platform", "device")
+def test_inference_equal(path, task, model, case, platform, device):
     """
     Verify the consistency between inference output results and golden reference results.
 
@@ -313,23 +313,13 @@ def test_inference_equal(path, task, model, case):
             result_lines.append(line)
 
     # Construct the path to the golden reference result file
-    gold_value_path = os.path.join(path, task, model, "results_gold", case)
+    gold_value_path = os.path.join(path, task, model, "results_gold", case + ".json")
     assert os.path.exists(gold_value_path), f"Failed to find gold result at {gold_value_path}"
 
-    with open(gold_value_path, "r") as file:
-        gold_value_lines = file.readlines()
+    with open(gold_value_path, "r") as f:
+        gold_result_json = json.load(f)
 
-    # Clean up trailing blank lines in the golden reference results: improve comparison robustness
-    if gold_value_lines:
-        # Find the index of the last non-blank line from the end
-        last_non_empty = len(gold_value_lines) - 1
-        while last_non_empty >= 0 and not gold_value_lines[last_non_empty].strip():
-            last_non_empty -= 1
-        # Truncate to the last non-blank line (inclusive)
-        if last_non_empty >= 0:
-            gold_value_lines = gold_value_lines[: last_non_empty + 1]
-        else:
-            gold_value_lines = []
+    gold_value_lines = _resolve_platform_device(gold_result_json, platform, device)
 
     print("\nResult checking")
     print("Result: ", result_lines)
