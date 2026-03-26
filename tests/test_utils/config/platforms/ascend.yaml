@@ -4,7 +4,7 @@
 # This platform configuration supports Ascend 910B devices.
 # Users can modify the following:
 # - functional: Add/remove test case names in the support lists
-#   Example: qwen3: ["4b_tp2_ascend"] -> add or remove items
+#   Example: qwen3: ["4b_tp2"] -> add or remove items
 # - unit: Add/remove paths in include and exclude lists
 
 # Define device types available for this platform
@@ -21,9 +21,9 @@ ascend910:
       hetero_train: {}
       benchmark: {}
       inference:
-        qwen3: ["4b_tp1_ascend"]
+        qwen3: ["4b_tp1"]
       serve:
-        qwen3: ["4b_tp1_ascend"]
+        qwen3: ["4b_tp1"]
     unit:
       # Include patterns: "*" for all, or list specific paths
       include: "*"

@@ -1,5 +1,5 @@
 defaults:
-  - envs: ascend
+  - envs: cuda
   - _self_
   - inference: 4b_tp1
 
