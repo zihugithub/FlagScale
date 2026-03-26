@@ -1,4 +1,5 @@
 # @package _global_
+# Ascend platform environment variables for inference/qwen3
 experiment:
   runner:
     hostfile: null
