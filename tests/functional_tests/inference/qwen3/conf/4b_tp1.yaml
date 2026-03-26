@@ -1,10 +1,11 @@
 defaults:
+  - envs: ascend
   - _self_
-  - inference: 4b_tp1_ascend
+  - inference: 4b_tp1_qwen3_4b
 
 experiment:
   exp_name: qwen3
-  exp_dir: tests/functional_tests/inference/qwen3/test_results/4b_tp1_ascend
+  exp_dir: tests/functional_tests/inference/qwen3/test_results/4b_tp1_qwen3_4b
   task:
     type: inference
     backend: vllm
