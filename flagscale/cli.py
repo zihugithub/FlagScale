@@ -1,3 +1,4 @@
+import os
 import subprocess
 import sys
 from enum import Enum
@@ -227,7 +228,11 @@ def inference(
     action = get_action(stop, dryrun, test, False, False)
     cfg_path, cfg_name = resolve_config(model, config, "inference")
     typer.echo(f"Inference {model} [{action}]")
-    run_task(cfg_path, cfg_name, action)
+    extra = []
+    platform = os.environ.get("FLAGSCALE_PLATFORM")
+    if platform:
+        extra.append(f"envs={platform}")
+    run_task(cfg_path, cfg_name, action, extra or None)
 
 
 @app.command()

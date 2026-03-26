@@ -82,6 +82,9 @@ run_test() {
     log_info "Running: $task/$model/$config"
     wait_for_gpu
 
+    # Export platform so flagscale CLI can inject envs override into Hydra
+    export FLAGSCALE_PLATFORM="$PLATFORM"
+
     # Clean old results
     # Extract exp_dir from config file and clean it
     local exp_dir=$(grep -oP '^\s*exp_dir:\s*\K\S+' "$config_file" | head -1 | tr -d "\"'")
