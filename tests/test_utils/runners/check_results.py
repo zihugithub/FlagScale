@@ -288,9 +288,11 @@ def test_inference_equal(path, task, model, case):
         # Assertion check: ensure no 'flag_gems' import failure errors exist
         assert "Failed to import 'flag_gems'" not in line, "Failed to import 'flag_gems''"
 
-        if line == "**************************************************\n":
+        if line.rstrip("\n").endswith("**************************************************"):
             output = True
-        if line == "##################################################\n":
+            result_lines.append("**************************************************\n")
+            continue
+        if line.rstrip("\n").endswith("##################################################"):
             output = False
         if output:
             result_lines.append(line)
