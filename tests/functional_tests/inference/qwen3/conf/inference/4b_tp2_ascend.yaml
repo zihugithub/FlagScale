@@ -2,11 +2,15 @@ llm:
   model: /home/gitlab-runner/data/Qwen3-4B
   tokenizer: /home/gitlab-runner/data/Qwen3-4B
   trust_remote_code: true
-  tensor_parallel_size: 1
+  tensor_parallel_size: 2
   pipeline_parallel_size: 1
   gpu_memory_utilization: 0.9
   seed: 1234
   enforce_eager: true
+  max_num_batched_tokens: 1024
+  max_num_seqs: 1
+  attention_backend: "TORCH_SDPA"
+  disable_custom_all_reduce: true
 
 generate:
   prompts: [
