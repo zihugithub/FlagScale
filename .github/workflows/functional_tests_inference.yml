@@ -165,31 +165,25 @@ jobs:
 
         timeout-minutes: 5
 
-      - name: Install dependencies for serve ascend
+      - name: Install dependencies for inference ascend
         if: inputs.platform == 'ascend'
         run: |
           set -euo pipefail
 
           # Install vllm-plugin-FL
-          cd /vllm-workspace
-          if [ -d vllm-plugin-FL ]; then
-            echo "⚠️  vllm-plugin-FL already exists, removing and re-cloning"
-            rm -rf vllm-plugin-FL
-          fi
-          git clone https://github.com/flagos-ai/vllm-plugin-FL || { echo "❌ Failed to clone vllm-plugin-FL"; exit 1; }
-          cd vllm-plugin-FL
-          pip install --no-build-isolation . || { echo "❌ vllm-plugin-FL install failed"; exit 1; }
+          pip install vllm-plugin-fl==0.1.0+vllm0.13.0 \
+            --extra-index-url https://resource.flagos.net/repository/flagos-pypi-hosted/simple \
+            || { echo "❌ vllm-plugin-FL install failed"; exit 1; }
           echo "✅ vllm-plugin-FL installed successfully"
 
           # Install FlagScale and dependencies
           cd $PROJECT_ROOT
-          pip install hydra-core==1.3.2 || { echo "❌ hydra-core install failed"; exit 1; }
           pip install . --no-build-isolation --root-user-action=ignore || { echo "❌ FlagScale CLI install failed"; exit 1; }
 
           # Verify installation
           command -v flagscale || { echo "❌ FlagScale CLI not found in PATH"; exit 1; }
           echo "✅ FlagScale CLI installed successfully: $(flagscale --version 2>/dev/null || echo 'version unknown')"
-          echo "✅ Environment ready for serve tests"
+          echo "✅ Environment ready for inference tests"
         timeout-minutes: 15
 
       - name: Run functional tests

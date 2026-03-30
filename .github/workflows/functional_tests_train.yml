@@ -220,15 +220,29 @@ jobs:
           echo "Python location: $(which python)"
           echo "Python version: $(python --version)"
 
-          # Install FlagScale and dependencies
-          pip install hydra-core==1.3.2 || { echo "❌ hydra-core install failed"; exit 1; }
+          # Install Megatron-LM-FL
+          pip install megatron_core==0.1.0+megatron0.15.0rc7 \
+            --extra-index-url https://resource.flagos.net/repository/flagos-pypi-hosted/simple \
+            || { echo "❌ Megatron-LM-FL install failed"; exit 1; }
+          echo "✅ Megatron-LM-FL installed successfully"
+
+          # Install TransformerEngine-FL and dependencies
+          git clone --depth 1 https://github.com/flagos-ai/TransformerEngine-FL.git /workspace/TransformerEngine-FL \
+            || { echo "❌ TransformerEngine-FL clone failed"; exit 1; }
+          TE_FL_SKIP_CUDA=1 pip install /workspace/TransformerEngine-FL \
+            || { echo "❌ TransformerEngine-FL install failed"; exit 1; }
+          echo "✅ TransformerEngine-FL installed successfully"
+          pip install numpy==1.26.4 jax==0.4.38 jaxlib==0.4.38 \
+            || { echo "❌ TransformerEngine-FL dependencies install failed"; exit 1; }
+
+          # Install FlagScale
           pip install . --no-build-isolation --root-user-action=ignore || { echo "❌ FlagScale CLI install failed"; exit 1; }
 
           # Verify installation
           command -v flagscale || { echo "❌ FlagScale CLI not found in PATH"; exit 1; }
           echo "✅ FlagScale CLI installed successfully: $(flagscale --version 2>/dev/null || echo 'version unknown')"
           echo "✅ Environment ready for train tests"
-        timeout-minutes: 5
+        timeout-minutes: 30
 
       - name: Run functional tests
         id: functional_test
