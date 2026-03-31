@@ -262,7 +262,7 @@ jobs:
   run_cuda_tests:
     name: Run CUDA tests
     needs: summary
-    if: needs.summary.result == 'success' && github.event_name != 'pull_request'
+    if: needs.summary.result == 'success'
     uses: ./.github/workflows/all_tests_cuda.yml
     secrets: inherit
 
