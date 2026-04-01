@@ -11,7 +11,7 @@ ci_train_image: harbor.baai.ac.cn/flagscale/flagscale-train:dev-cu128-py3.12-202
 ci_inference_image: harbor.baai.ac.cn/flagscale/flagscale-inference:dev-cu128-py3.12-20260302102033
 
 # Runner labels for this hardware
-runner_labels: ['flagcicd-nvidia-a100-gpu4-128c-512g']
+runner_labels: ['flagcicd-nvidia-a100-gpu2-64c-256g']
 
 # Container volumes (hardware-specific paths)
 container_volumes:
