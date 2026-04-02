@@ -122,6 +122,13 @@ jobs:
           echo "=== Disk Info ==="
           df -h
 
+      - name: List mount directory contents
+        run: |
+          echo "=== /home/gitlab-runner/data ==="
+          ls -lh /home/gitlab-runner/data/ || echo "Directory not found or empty"
+          echo "=== /home/gitlab-runner/tokenizers ==="
+          ls -lh /home/gitlab-runner/tokenizers/ || echo "Directory not found or empty"
+
       - name: Install dependencies for training
         run: |
           set -euo pipefail
