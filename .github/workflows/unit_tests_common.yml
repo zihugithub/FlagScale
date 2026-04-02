@@ -107,6 +107,13 @@ jobs:
         run: |
           git config --global --add safe.directory $PROJECT_ROOT
 
+      - name: List mount directory contents
+        run: |
+          echo "=== /home/gitlab-runner/data ==="
+          ls -lh /home/gitlab-runner/data/ || echo "Directory not found or empty"
+          echo "=== /home/gitlab-runner/tokenizers ==="
+          ls -lh /home/gitlab-runner/tokenizers/ || echo "Directory not found or empty"
+
       - name: Install dependencies for unit tests
         run: |
           set -euo pipefail
