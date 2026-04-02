@@ -88,6 +88,17 @@ jobs:
         run: |
           git config --global --add safe.directory $PROJECT_ROOT
 
+      - name: Show hardware info
+        run: |
+          echo "=== GPU Info ==="
+          nvidia-smi || echo "nvidia-smi not available"
+          echo "=== CPU Info ==="
+          lscpu | grep -E "Model name|Socket|Core|Thread|NUMA" || true
+          echo "=== Memory Info ==="
+          free -h
+          echo "=== Disk Info ==="
+          df -h
+
       - name: Install FlagScale CLI
         run: |
           set -euo pipefail
