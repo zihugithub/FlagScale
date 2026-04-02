@@ -17,8 +17,8 @@ runner_labels: ['flagcicd-nvidia-a100-gpu2-32c-128g']
 container_volumes:
   - /home/flagscale_cicd/flask/static:/workspace/report
   - /home/flagscale_cicd/flask/config:/workspace/config
-  - /home/flagscale_cicd/docker/docker_build/docker_data:/home/gitlab-runner/data
-  - /home/flagscale_cicd/docker/docker_build/docker_tokenizers:/home/gitlab-runner/tokenizers
+  - /mnt/airs-business/cicd/baai_datasets:/home/gitlab-runner/data
+  - /mnt/airs-business/cicd/baai_tokenizers:/home/gitlab-runner/tokenizers
   - /home/flagscale_cicd/sccache:/github/home/.cache/sccache
   - /etc/hosts:/etc/hosts:ro
 
