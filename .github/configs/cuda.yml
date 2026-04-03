@@ -15,11 +15,8 @@ runner_labels: ['flagcicd-nvidia-a100-gpu2-32c-128g']
 
 # Container volumes (hardware-specific paths)
 container_volumes:
-  - /home/flagscale_cicd/flask/static:/workspace/report
-  - /home/flagscale_cicd/flask/config:/workspace/config
   - /mnt/airs-business/cicd/baai_datasets:/home/gitlab-runner/data
   - /mnt/airs-business/cicd/baai_tokenizers:/home/gitlab-runner/tokenizers
-  - /home/flagscale_cicd/sccache:/github/home/.cache/sccache
   - /etc/hosts:/etc/hosts:ro
 
 # Container options (hardware-specific settings)

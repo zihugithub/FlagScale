@@ -2,7 +2,7 @@ name: metax_c500_tests
 
 on:
   push:
-    branches: ["main"]
+    branches: ["test-report-flagcicd-260331"]
   pull_request:
     branches: ["main"]
 
