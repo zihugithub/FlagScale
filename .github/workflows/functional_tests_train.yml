@@ -114,7 +114,15 @@ jobs:
       - name: Show hardware info
         run: |
           echo "=== GPU Info ==="
-          nvidia-smi || echo "nvidia-smi not available"
+          if command -v nvidia-smi &>/dev/null; then
+            nvidia-smi
+          elif command -v mx-smi &>/dev/null; then
+            mx-smi
+          elif command -v npu-smi &>/dev/null; then
+            npu-smi info
+          else
+            echo "No GPU management tool found (nvidia-smi / mx-smi / npu-smi)"
+          fi
           echo "=== CPU Info ==="
           lscpu | grep -E "Model name|Socket|Core|Thread|NUMA" || true
           echo "=== Memory Info ==="
