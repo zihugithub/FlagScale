@@ -244,8 +244,6 @@ jobs:
           echo "Python location: $(which python)"
           echo "Python version: $(python --version)"
           
-          sleep 360m
-
           # Run functional tests using run_tests.sh
           bash "$PROJECT_ROOT/tests/test_utils/runners/run_tests.sh" \
             --platform "$PLATFORM" \
@@ -264,7 +262,7 @@ jobs:
 
           echo "exit_code=$exit_code" >> $GITHUB_OUTPUT
           exit $exit_code
-        timeout-minutes: 360
+        timeout-minutes: 30
 
       - name: Upload Functional Test Logs
         if: always() && steps.functional_test.outcome == 'failure'
