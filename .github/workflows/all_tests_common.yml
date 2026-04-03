@@ -206,24 +206,24 @@ jobs:
       env_name: ${{ needs.checkout_and_config.outputs.env_name_serve }}
       env_path: ${{ needs.checkout_and_config.outputs.env_path }}
 
-  NOTE: rl functional tests are temporarily disabled
-  functional_tests_rl:
-    needs:
-      - checkout_and_config
-      - unit_tests
-    if: fromJson(needs.checkout_and_config.outputs.rl_test_matrix)[0] != null
-    uses: ./.github/workflows/functional_tests_rl.yml
-    with:
-      platform: ${{ inputs.platform }}
-      test_matrix: ${{ needs.checkout_and_config.outputs.rl_test_matrix }}
-      image: ${{ needs.checkout_and_config.outputs.ci_image }}
-      runs_on: ${{ needs.checkout_and_config.outputs.runs_on }}
-      container_volumes: ${{ needs.checkout_and_config.outputs.container_volumes }}
-      container_options: ${{ needs.checkout_and_config.outputs.container_options }}
-      source_artifact: flagscale-source-${{ github.sha }}
-      pkg_mgr: ${{ needs.checkout_and_config.outputs.pkg_mgr }}
-      env_name: ${{ needs.checkout_and_config.outputs.env_name_rl }}
-      env_path: ${{ needs.checkout_and_config.outputs.env_path }}
+  # NOTE: rl functional tests are temporarily disabled
+  # functional_tests_rl:
+  #   needs:
+  #     - checkout_and_config
+  #     - unit_tests
+  #   if: fromJson(needs.checkout_and_config.outputs.rl_test_matrix)[0] != null
+  #   uses: ./.github/workflows/functional_tests_rl.yml
+  #   with:
+  #     platform: ${{ inputs.platform }}
+  #     test_matrix: ${{ needs.checkout_and_config.outputs.rl_test_matrix }}
+  #     image: ${{ needs.checkout_and_config.outputs.ci_image }}
+  #     runs_on: ${{ needs.checkout_and_config.outputs.runs_on }}
+  #     container_volumes: ${{ needs.checkout_and_config.outputs.container_volumes }}
+  #     container_options: ${{ needs.checkout_and_config.outputs.container_options }}
+  #     source_artifact: flagscale-source-${{ github.sha }}
+  #     pkg_mgr: ${{ needs.checkout_and_config.outputs.pkg_mgr }}
+  #     env_name: ${{ needs.checkout_and_config.outputs.env_name_rl }}
+  #     env_path: ${{ needs.checkout_and_config.outputs.env_path }}
 
   functional_tests_benchmark:
     needs:
