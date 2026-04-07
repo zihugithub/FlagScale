@@ -203,13 +203,10 @@ jobs:
           echo "Environment ready for train tests"
         timeout-minutes: 30
 
-      - name: Install dependencies for serve metax
+      - name: Install dependencies for train metax
         if: inputs.platform == 'metax'
         run: |
           set -euo pipefail
-
-          # Clone FlagOS's Megatron-LM fork required by the serve task on MetaX platform
-          git clone https://github.com/flagos-ai/Megatron-LM-FL.git /workspace/Megatron-LM-FL
 
           cd $PROJECT_ROOT
 
