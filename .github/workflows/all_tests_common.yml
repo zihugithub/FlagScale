@@ -7,6 +7,16 @@ on:
         required: true
         type: string
         description: Platform name (e.g., cuda, default)
+      ci_train_image:
+        required: false
+        type: string
+        description: Override train image (e.g., newly built image). Falls back to platform config if not set.
+        default: ""
+      ci_inference_image:
+        required: false
+        type: string
+        description: Override inference image. Falls back to platform config if not set.
+        default: ""
 
 jobs:
   checkout_and_config:
@@ -100,49 +110,39 @@ jobs:
           # Load configuration and group tests by task
           load_platform_config "$PLATFORM"
 
-  # CLI validation runs first (outside virtual env) as a gate for all subsequent tests
-  cli_validation:
-    needs: checkout_and_config
-    uses: ./.github/workflows/functional_tests_cli.yml
-    with:
-      platform: ${{ inputs.platform }}
-      image: ${{ needs.checkout_and_config.outputs.ci_train_image }}
-      runs_on: ${{ needs.checkout_and_config.outputs.runs_on }}
-      container_volumes: ${{ needs.checkout_and_config.outputs.container_volumes }}
-      container_options: ${{ needs.checkout_and_config.outputs.container_options }}
-      source_artifact: flagscale-source-${{ github.sha }}
+          # Override images if provided as inputs
+          if [ -n "${{ inputs.ci_train_image }}" ]; then
+            echo "ci_train_image=${{ inputs.ci_train_image }}" >> $GITHUB_OUTPUT
+          fi
+          if [ -n "${{ inputs.ci_inference_image }}" ]; then
+            echo "ci_inference_image=${{ inputs.ci_inference_image }}" >> $GITHUB_OUTPUT
+          fi
 
-  # unit_tests:
-    # needs:
-    #   - checkout_and_config
-    #   # - cli_validation
-    # strategy:
-    #   fail-fast: false
-    #   matrix:
-    #     device: ${{ fromJson(needs.checkout_and_config.outputs.device_types) }}
-    # uses: ./.github/workflows/unit_tests_common.yml
-    # name: unit_tests
-    # with:
-    #   platform: ${{ inputs.platform }}
-    #   device: ${{ matrix.device }}
-    #   image: ${{ needs.checkout_and_config.outputs.ci_train_image }}
-    #   runs_on: ${{ needs.checkout_and_config.outputs.runs_on }}
-    #   container_volumes: ${{ needs.checkout_and_config.outputs.container_volumes }}
-    #   container_options: ${{ needs.checkout_and_config.outputs.container_options }}
-    #   source_artifact: flagscale-source-${{ github.sha }}
-    #   pkg_mgr: ${{ needs.checkout_and_config.outputs.pkg_mgr }}
-    #   env_name: ${{ needs.checkout_and_config.outputs.env_name_train }}
-    #   env_path: ${{ needs.checkout_and_config.outputs.env_path }}
-
-  # functional_tests_train:
-  #   needs:
-  #     - checkout_and_config
-  #     # - unit_tests
-  #   if: fromJson(needs.checkout_and_config.outputs.train_test_matrix)[0] != null
-  #   uses: ./.github/workflows/functional_tests_train.yml
+  # # CLI validation runs first (outside virtual env) as a gate for all subsequent tests
+  # cli_validation:
+  #   needs: checkout_and_config
+  #   uses: ./.github/workflows/functional_tests_cli.yml
   #   with:
   #     platform: ${{ inputs.platform }}
-  #     test_matrix: ${{ needs.checkout_and_config.outputs.train_test_matrix }}
+  #     image: ${{ needs.checkout_and_config.outputs.ci_train_image }}
+  #     runs_on: ${{ needs.checkout_and_config.outputs.runs_on }}
+  #     container_volumes: ${{ needs.checkout_and_config.outputs.container_volumes }}
+  #     container_options: ${{ needs.checkout_and_config.outputs.container_options }}
+  #     source_artifact: flagscale-source-${{ github.sha }}
+
+  # unit_tests:
+  #   needs:
+  #     - checkout_and_config
+  #     - cli_validation
+  #   strategy:
+  #     fail-fast: false
+  #     matrix:
+  #       device: ${{ fromJson(needs.checkout_and_config.outputs.device_types) }}
+  #   uses: ./.github/workflows/unit_tests_common.yml
+  #   name: unit_tests
+  #   with:
+  #     platform: ${{ inputs.platform }}
+  #     device: ${{ matrix.device }}
   #     image: ${{ needs.checkout_and_config.outputs.ci_train_image }}
   #     runs_on: ${{ needs.checkout_and_config.outputs.runs_on }}
   #     container_volumes: ${{ needs.checkout_and_config.outputs.container_volumes }}
@@ -151,6 +151,24 @@ jobs:
   #     pkg_mgr: ${{ needs.checkout_and_config.outputs.pkg_mgr }}
   #     env_name: ${{ needs.checkout_and_config.outputs.env_name_train }}
   #     env_path: ${{ needs.checkout_and_config.outputs.env_path }}
+
+  functional_tests_train:
+    needs:
+      - checkout_and_config
+      # - unit_tests
+    if: fromJson(needs.checkout_and_config.outputs.train_test_matrix)[0] != null
+    uses: ./.github/workflows/functional_tests_train.yml
+    with:
+      platform: ${{ inputs.platform }}
+      test_matrix: ${{ needs.checkout_and_config.outputs.train_test_matrix }}
+      image: ${{ needs.checkout_and_config.outputs.ci_train_image }}
+      runs_on: ${{ needs.checkout_and_config.outputs.runs_on }}
+      container_volumes: ${{ needs.checkout_and_config.outputs.container_volumes }}
+      container_options: ${{ needs.checkout_and_config.outputs.container_options }}
+      source_artifact: flagscale-source-${{ github.sha }}
+      pkg_mgr: ${{ needs.checkout_and_config.outputs.pkg_mgr }}
+      env_name: ${{ needs.checkout_and_config.outputs.env_name_train }}
+      env_path: ${{ needs.checkout_and_config.outputs.env_path }}
 
   # functional_tests_hetero_train:
   #   needs:
@@ -170,23 +188,23 @@ jobs:
   #     env_name: ${{ needs.checkout_and_config.outputs.env_name_train }}
   #     env_path: ${{ needs.checkout_and_config.outputs.env_path }}
 
-  # functional_tests_inference:
-  #   needs:
-  #     - checkout_and_config
-  #     # - unit_tests
-  #   if: fromJson(needs.checkout_and_config.outputs.inference_test_matrix)[0] != null
-  #   uses: ./.github/workflows/functional_tests_inference.yml
-  #   with:
-  #     platform: ${{ inputs.platform }}
-  #     test_matrix: ${{ needs.checkout_and_config.outputs.inference_test_matrix }}
-  #     image: ${{ needs.checkout_and_config.outputs.ci_inference_image }}
-  #     runs_on: ${{ needs.checkout_and_config.outputs.runs_on }}
-  #     container_volumes: ${{ needs.checkout_and_config.outputs.container_volumes }}
-  #     container_options: ${{ needs.checkout_and_config.outputs.container_options }}
-  #     source_artifact: flagscale-source-${{ github.sha }}
-  #     pkg_mgr: ${{ needs.checkout_and_config.outputs.pkg_mgr }}
-  #     env_name: ${{ needs.checkout_and_config.outputs.env_name_inference }}
-  #     env_path: ${{ needs.checkout_and_config.outputs.env_path }}
+  functional_tests_inference:
+    needs:
+      - checkout_and_config
+      # - unit_tests
+    if: fromJson(needs.checkout_and_config.outputs.inference_test_matrix)[0] != null
+    uses: ./.github/workflows/functional_tests_inference.yml
+    with:
+      platform: ${{ inputs.platform }}
+      test_matrix: ${{ needs.checkout_and_config.outputs.inference_test_matrix }}
+      image: ${{ needs.checkout_and_config.outputs.ci_inference_image }}
+      runs_on: ${{ needs.checkout_and_config.outputs.runs_on }}
+      container_volumes: ${{ needs.checkout_and_config.outputs.container_volumes }}
+      container_options: ${{ needs.checkout_and_config.outputs.container_options }}
+      source_artifact: flagscale-source-${{ github.sha }}
+      pkg_mgr: ${{ needs.checkout_and_config.outputs.pkg_mgr }}
+      env_name: ${{ needs.checkout_and_config.outputs.env_name_inference }}
+      env_path: ${{ needs.checkout_and_config.outputs.env_path }}
 
   # functional_tests_serve:
   #   needs:

@@ -54,9 +54,12 @@ on:
 
   # Temporary: trigger on push to feature branch for testing
   push:
-    branches:
-      - 'auto-build-image-20260320'
+    branches: [auto-build-image-20260320]
     paths:
+      - 'docker/cuda/**'
+      - 'docker/build.sh'
+      - 'tools/install/**'
+      - 'requirements/**'
       - '.github/workflows/build_image_cuda.yml'
 
 permissions:
@@ -133,9 +136,12 @@ jobs:
       train_tag: ${{ steps.export.outputs.train_tag }}
       inference_tag: ${{ steps.export.outputs.inference_tag }}
       all_tag: ${{ steps.export.outputs.all_tag }}
+      train_tar: ${{ steps.export.outputs.train_tar }}
+      inference_tar: ${{ steps.export.outputs.inference_tar }}
+      all_tar: ${{ steps.export.outputs.all_tar }}
     steps:
       - name: Clean workspace
-        run: sudo find "$GITHUB_WORKSPACE" -mindepth 1 -delete 2>/dev/null || true
+        run: sudo rm -rf "$GITHUB_WORKSPACE"/* "$GITHUB_WORKSPACE"/.[!.]* 2>/dev/null || true
 
       - name: Checkout code
         uses: actions/checkout@v4
@@ -164,23 +170,16 @@ jobs:
           # Image naming follows docker/build.sh convention:
           #   flagscale-<task>:<target>-cu<major><minor>-py<version>[-<timestamp>]
           IMAGE_NAME="flagscale-${TASK}"
-          TAG="${TARGET}-cu${CUDA_MAJOR}${CUDA_MINOR}-py${PYTHON_VERSION}"
-          TAG_TS="${TAG}-${TIMESTAMP}"
+          TAG="${TARGET}-cu${CUDA_MAJOR}${CUDA_MINOR}-py${PYTHON_VERSION}-${TIMESTAMP}"
 
-          # # Build tag (with timestamp, used during docker build)
-          # BUILD_TAG="${{ env.REGISTRY }}/${IMAGE_NAME}:${TAG_TS}"
-          BUILD_TAG="flagscale-train:dev-cu128-py3.12-202604071404-ye"
-          # Registry tag (without timestamp, used when pushing to registry)
-          LOCAL_TAG="${{ env.REGISTRY }}/${IMAGE_NAME}:${TAG}"
+          BUILD_TAG="${{ env.REGISTRY }}/${IMAGE_NAME}:${TAG}"
 
           # Derived build arguments
           BASE_IMAGE="nvidia/cuda:${CUDA_VERSION}-devel-ubuntu${UBUNTU_VERSION}"
           PYTORCH_INDEX="https://download.pytorch.org/whl/cu${CUDA_MAJOR}${CUDA_MINOR}"
 
           echo "image_name=${IMAGE_NAME}" >> $GITHUB_OUTPUT
-          echo "tag=${TAG}" >> $GITHUB_OUTPUT
           echo "build_tag=${BUILD_TAG}" >> $GITHUB_OUTPUT
-          echo "local_tag=${LOCAL_TAG}" >> $GITHUB_OUTPUT
           echo "base_image=${BASE_IMAGE}" >> $GITHUB_OUTPUT
           echo "pytorch_index=${PYTORCH_INDEX}" >> $GITHUB_OUTPUT
 
@@ -196,33 +195,50 @@ jobs:
             echo "| Python | \`${PYTHON_VERSION}\` |"
             echo "| Dockerfile | \`docker/cuda/Dockerfile.${TASK}\` |"
             echo "| Build Tag | \`${BUILD_TAG}\` |"
-            echo "| Registry Tag | \`${LOCAL_TAG}\` |"
           } >> $GITHUB_STEP_SUMMARY
 
-      # - name: Build Docker image
-      #   uses: docker/build-push-action@v6
-      #   with:
-      #     context: .
-      #     file: docker/cuda/Dockerfile.${{ matrix.task }}
-      #     target: ${{ needs.prepare.outputs.target }}
-      #     load: true
-      #     tags: ${{ steps.meta.outputs.build_tag }}
-      #     build-args: |
-      #       BASE_IMAGE=${{ steps.meta.outputs.base_image }}
-      #       CUDA_VERSION=${{ env.CUDA_VERSION }}
-      #       UBUNTU_VERSION=${{ env.UBUNTU_VERSION }}
-      #       PYTHON_VERSION=${{ env.PYTHON_VERSION }}
-      #       UV_VERSION=${{ env.UV_VERSION }}
-      #       PYTORCH_INDEX=${{ steps.meta.outputs.pytorch_index }}
-      #       PKG_MGR=${{ env.PKG_MGR }}
-      #     no-cache: ${{ needs.prepare.outputs.no_cache == 'true' }}
+      - name: Build Docker image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: docker/cuda/Dockerfile.${{ matrix.task }}
+          target: ${{ needs.prepare.outputs.target }}
+          load: true
+          tags: ${{ steps.meta.outputs.build_tag }}
+          build-args: |
+            BASE_IMAGE=${{ steps.meta.outputs.base_image }}
+            CUDA_VERSION=${{ env.CUDA_VERSION }}
+            UBUNTU_VERSION=${{ env.UBUNTU_VERSION }}
+            PYTHON_VERSION=${{ env.PYTHON_VERSION }}
+            UV_VERSION=${{ env.UV_VERSION }}
+            PYTORCH_INDEX=${{ steps.meta.outputs.pytorch_index }}
+            PKG_MGR=${{ env.PKG_MGR }}
+          no-cache: ${{ needs.prepare.outputs.no_cache == 'true' }}
+
+      - name: Save image as tar
+        run: |
+          TAR_DIR="/home/yefubao/images_tar"
+          mkdir -p "$TAR_DIR"
+          IMAGE_TAG="${{ steps.meta.outputs.build_tag }}"
+          # Use image name with tag as filename (replace / and : with -)
+          TAR_NAME=$(echo "$IMAGE_TAG" | tr '/: ' '---').tar
+          docker save "$IMAGE_TAG" -o "${TAR_DIR}/${TAR_NAME}"
+          echo "tar_path=${TAR_DIR}/${TAR_NAME}" >> $GITHUB_OUTPUT
+        id: save_tar
 
       - name: Export image tag for config update
         id: export
-        if: success() && needs.prepare.outputs.push == 'true'
         run: |
           TASK="${{ matrix.task }}"
-          echo "${TASK}_tag=${{ steps.meta.outputs.local_tag }}" >> $GITHUB_OUTPUT
+          echo "${TASK}_tag=${{ steps.meta.outputs.build_tag }}" >> $GITHUB_OUTPUT
+          echo "${TASK}_tar=${{ steps.save_tar.outputs.tar_path }}" >> $GITHUB_OUTPUT
+
+      - name: Print build result
+        if: success()
+        run: |
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Result:** Built successfully" >> $GITHUB_STEP_SUMMARY
+          echo "**Pushed:** ${{ needs.prepare.outputs.push }}" >> $GITHUB_STEP_SUMMARY
 
   # ---------------------------------------------------------------------------
   # Summary: verify all builds completed
@@ -242,113 +258,45 @@ jobs:
           echo "All Docker images built successfully!"
 
   # ---------------------------------------------------------------------------
-  # Checkout and upload source artifact for downstream test jobs
+  # Load images from tar and push to local registry before running tests
   # ---------------------------------------------------------------------------
-  upload_source:
-    name: Checkout and upload source
-    needs: summary
-    runs-on: ubuntu-latest
+  load_images:
+    name: Load and push images
+    needs: ['build', 'summary']
+    runs-on: [self-hosted, Linux, X64, nvidia-0, gpus-8]
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-        with:
-          repository: ${{ github.event.pull_request.head.repo.full_name }}
-          ref: ${{ github.event.pull_request.head.ref }}
-          ssh-strict: true
-          ssh-user: git
-          persist-credentials: false
-          clean: true
-          sparse-checkout-cone-mode: true
-          fetch-tags: false
-          show-progress: true
-          lfs: false
-          submodules: false
-          set-safe-directory: true
-
-      - name: Create source code tarball for distribution
+      - name: Load train image from tar and push
         run: |
-          tar -czf /tmp/flagscale-source.tar.gz \
-            --exclude='.git' \
-            --exclude='*.pyc' \
-            --exclude='__pycache__' \
-            .
+          TAR="${{ needs.build.outputs.train_tar }}"
+          TAG="${{ needs.build.outputs.train_tag }}"
+          if [ -f "$TAR" ]; then
+            echo "Loading $TAR"
+            docker load -i "$TAR"
+            docker push "$TAG"
+          else
+            echo "::warning::Train image tar not found: $TAR, skipping load"
+          fi
 
-      - name: Upload source code artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: flagscale-source-${{ github.sha }}
-          path: /tmp/flagscale-source.tar.gz
-          retention-days: 1
-          compression-level: 0
+      - name: Load inference image from tar and push
+        run: |
+          TAR="${{ needs.build.outputs.inference_tar }}"
+          TAG="${{ needs.build.outputs.inference_tag }}"
+          if [ -f "$TAR" ]; then
+            echo "Loading $TAR"
+            docker load -i "$TAR"
+            docker push "$TAG"
+          else
+            echo "::warning::Inference image tar not found: $TAR, skipping load"
+          fi
 
   # ---------------------------------------------------------------------------
   # Run CUDA tests after build succeeds
   # ---------------------------------------------------------------------------
-
-  unit_tests:
-    name: Unit tests (CUDA)
-    needs: ['prepare', 'summary', 'upload_source']
-    if: ${{ fromJson(needs.prepare.outputs.matrix) }} == "train"
-    uses: ./.github/workflows/unit_tests_common.yml
+  run_cuda_tests:
+    name: Run CUDA tests
+    needs: ['prepare', 'build', 'load_images']
+    uses: ./.github/workflows/all_tests_common.yml
     with:
       platform: cuda
-      device: a100
-      image: ${{ needs.build.outputs.train_tag }}
-      runs_on: '["self-hosted", "Linux", "X64", "nvidia-0", "gpus-8"]'
-      container_volumes: '["/home/flagscale_cicd/docker/docker_build/docker_data:/home/gitlab-runner/data", "/home/flagscale_cicd/docker/docker_build/docker_tokenizers:/home/gitlab-runner/tokenizers"]'
-      container_options: "--gpus all --shm-size=500g --hostname flagscale_cicd --user root --ulimit nofile=65535:65535"
-      source_artifact: flagscale-source-${{ github.sha }}
-      pkg_mgr: 'conda'
-      env_name: 'flagscale-train'
-      env_path: '/root/miniconda3'
-
-  train_tests:
-    name: Train tests (CUDA)
-    needs: ['prepare', 'summary', 'upload_source']
-    if: ${{ fromJson(needs.prepare.outputs.matrix) }} == "train"
-    uses: ./.github/workflows/functional_tests_train.yml
-    with:
-      platform: cuda
-      device: a100
-      image: ${{ needs.build.outputs.train_tag }}
-      runs_on: '["self-hosted", "Linux", "X64", "nvidia-0", "gpus-8"]'
-      container_volumes: '["/home/flagscale_cicd/docker/docker_build/docker_data:/home/gitlab-runner/data", "/home/flagscale_cicd/docker/docker_build/docker_tokenizers:/home/gitlab-runner/tokenizers"]'
-      container_options: "--gpus all --shm-size=500g --hostname flagscale_cicd --user root --ulimit nofile=65535:65535"
-      source_artifact: flagscale-source-${{ github.sha }}
-      pkg_mgr: 'conda'
-      env_name: 'flagscale-train'
-      env_path: '/root/miniconda3'
-
-  hetero_train_tests:
-    name: Hetero train tests (CUDA)
-    needs: ['prepare', 'summary', 'upload_source']
-    if: ${{ fromJson(needs.prepare.outputs.matrix) }} == "train"
-    uses: ./.github/workflows/functional_tests_hetero_train.yml
-    with:
-      platform: cuda
-      device: a100
-      image: ${{ needs.build.outputs.train_tag }}
-      runs_on: '["self-hosted", "Linux", "X64", "nvidia-0", "gpus-8"]'
-      container_volumes: '["/home/flagscale_cicd/docker/docker_build/docker_data:/home/gitlab-runner/data", "/home/flagscale_cicd/docker/docker_build/docker_tokenizers:/home/gitlab-runner/tokenizers"]'
-      container_options: "--gpus all --shm-size=500g --hostname flagscale_cicd --user root --ulimit nofile=65535:65535"
-      source_artifact: flagscale-source-${{ github.sha }}
-      pkg_mgr: 'conda'
-      env_name: 'flagscale-train'
-      env_path: '/root/miniconda3'
-
-  inference_tests:
-    name: Inference tests (CUDA)
-    needs: ['prepare', 'summary', 'upload_source']
-    if: ${{ fromJson(needs.prepare.outputs.matrix) }} == "inference"
-    uses: ./.github/workflows/functional_tests_inference.yml
-    with:
-      platform: cuda
-      device: a100
-      image: ${{ needs.build.outputs.inference_tag }}
-      runs_on: '["self-hosted", "Linux", "X64", "nvidia-0", "gpus-8"]'
-      container_volumes: '["/home/flagscale_cicd/docker/docker_build/docker_data:/home/gitlab-runner/data", "/home/flagscale_cicd/docker/docker_build/docker_tokenizers:/home/gitlab-runner/tokenizers"]'
-      container_options: "--gpus all --shm-size=500g --hostname flagscale_cicd --user root --ulimit nofile=65535:65535"
-      source_artifact: flagscale-source-${{ github.sha }}
-      pkg_mgr: 'conda'
-      env_name: 'flagscale-inference'
-      env_path: '/root/miniconda3'
+      ci_train_image: ${{ needs.build.outputs.train_tag }}
+      ci_inference_image: ${{ needs.build.outputs.inference_tag }}

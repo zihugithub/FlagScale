@@ -1,9 +1,6 @@
 name: cuda_tests
 
 on:
-  # Called by Build Docker Images - CUDA workflow
-  workflow_call:
-
   push:
     branches: ["main"]
     paths-ignore:
