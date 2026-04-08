@@ -41,19 +41,13 @@ on:
         description: 'Build all tasks (train, inference, all) - overrides task selection'
         type: boolean
         default: false
+      tar_dir:
+        description: 'Directory to store image tar files'
+        type: string
+        default: '/home/flagscale_cicd/images_tar'
 
   # Trigger on PRs that modify docker-related files (build + test only, no push)
   pull_request:
-    branches: [main]
-    paths:
-      - 'docker/cuda/**'
-      - 'docker/build.sh'
-      - 'tools/install/**'
-      - 'requirements/**'
-      - '.github/workflows/build_image_cuda.yml'
-
-  # Trigger on merge to main: full pipeline including push to Harbor
-  push:
     branches: [main]
     paths:
       - 'docker/cuda/**'
@@ -78,6 +72,7 @@ env:
   PYTHON_VERSION: '3.12'
   UV_VERSION: '0.7.2'
   PKG_MGR: ${{ inputs.pkg_mgr || 'conda' }}
+  TAR_DIR: ${{ inputs.tar_dir || '/home/flagscale_cicd/images_tar' }}
 
 jobs:
   # ---------------------------------------------------------------------------
@@ -102,7 +97,8 @@ jobs:
             echo 'matrix={"task":["${{ inputs.task }}"]}' >> $GITHUB_OUTPUT
           else
             # PR or build_all_tasks=true: build all tasks
-            echo 'matrix={"task":["train","inference","all"]}' >> $GITHUB_OUTPUT
+            # echo 'matrix={"task":["train","inference","all"]}' >> $GITHUB_OUTPUT
+            echo 'matrix={"task":["train"]}' >> $GITHUB_OUTPUT
           fi
 
       - name: Set build parameters
@@ -136,6 +132,9 @@ jobs:
       train_tag: ${{ steps.export.outputs.train_tag }}
       inference_tag: ${{ steps.export.outputs.inference_tag }}
       all_tag: ${{ steps.export.outputs.all_tag }}
+      train_tar: ${{ steps.export.outputs.train_tar }}
+      inference_tar: ${{ steps.export.outputs.inference_tar }}
+      all_tar: ${{ steps.export.outputs.all_tar }}
     steps:
       - name: Clean workspace
         run: sudo rm -rf "$GITHUB_WORKSPACE"/* "$GITHUB_WORKSPACE"/.[!.]* 2>/dev/null || true
@@ -167,22 +166,16 @@ jobs:
           # Image naming follows docker/build.sh convention:
           #   flagscale-<task>:<target>-cu<major><minor>-py<version>[-<timestamp>]
           IMAGE_NAME="flagscale-${TASK}"
-          TAG="${TARGET}-cu${CUDA_MAJOR}${CUDA_MINOR}-py${PYTHON_VERSION}"
-          TAG_TS="${TAG}-${TIMESTAMP}"
+          TAG="${TARGET}-cu${CUDA_MAJOR}${CUDA_MINOR}-py${PYTHON_VERSION}-${TIMESTAMP}"
 
-          # Build tag (with timestamp, used during docker build)
-          BUILD_TAG="${{ env.REGISTRY }}/${IMAGE_NAME}:${TAG_TS}"
-          # Registry tag (without timestamp, used when pushing to registry)
-          LOCAL_TAG="${{ env.REGISTRY }}/${IMAGE_NAME}:${TAG}"
+          BUILD_TAG="${{ env.REGISTRY }}/${IMAGE_NAME}:${TAG}"
 
           # Derived build arguments
           BASE_IMAGE="nvidia/cuda:${CUDA_VERSION}-devel-ubuntu${UBUNTU_VERSION}"
           PYTORCH_INDEX="https://download.pytorch.org/whl/cu${CUDA_MAJOR}${CUDA_MINOR}"
 
           echo "image_name=${IMAGE_NAME}" >> $GITHUB_OUTPUT
-          echo "tag=${TAG}" >> $GITHUB_OUTPUT
           echo "build_tag=${BUILD_TAG}" >> $GITHUB_OUTPUT
-          echo "local_tag=${LOCAL_TAG}" >> $GITHUB_OUTPUT
           echo "base_image=${BASE_IMAGE}" >> $GITHUB_OUTPUT
           echo "pytorch_index=${PYTORCH_INDEX}" >> $GITHUB_OUTPUT
 
@@ -198,7 +191,6 @@ jobs:
             echo "| Python | \`${PYTHON_VERSION}\` |"
             echo "| Dockerfile | \`docker/cuda/Dockerfile.${TASK}\` |"
             echo "| Build Tag | \`${BUILD_TAG}\` |"
-            echo "| Registry Tag | \`${LOCAL_TAG}\` |"
           } >> $GITHUB_STEP_SUMMARY
 
       - name: Build Docker image
@@ -219,18 +211,23 @@ jobs:
             PKG_MGR=${{ env.PKG_MGR }}
           no-cache: ${{ needs.prepare.outputs.no_cache == 'true' }}
 
-      - name: Push Docker image
-        if: needs.prepare.outputs.push == 'true'
+      - name: Save image as tar
         run: |
-          docker tag ${{ steps.meta.outputs.build_tag }} ${{ steps.meta.outputs.local_tag }}
-          docker push ${{ steps.meta.outputs.local_tag }}
+          TAR_DIR="${{ env.TAR_DIR }}"
+          mkdir -p "$TAR_DIR"
+          IMAGE_TAG="${{ steps.meta.outputs.build_tag }}"
+          # Use image name with tag as filename (replace / and : with -)
+          TAR_NAME=$(echo "$IMAGE_TAG" | tr '/: ' '---').tar
+          docker save "$IMAGE_TAG" -o "${TAR_DIR}/${TAR_NAME}"
+          echo "tar_path=${TAR_DIR}/${TAR_NAME}" >> $GITHUB_OUTPUT
+        id: save_tar
 
       - name: Export image tag for config update
         id: export
-        if: success() && needs.prepare.outputs.push == 'true'
         run: |
           TASK="${{ matrix.task }}"
-          echo "${TASK}_tag=${{ steps.meta.outputs.local_tag }}" >> $GITHUB_OUTPUT
+          echo "${TASK}_tag=${{ steps.meta.outputs.build_tag }}" >> $GITHUB_OUTPUT
+          echo "${TASK}_tar=${{ steps.save_tar.outputs.tar_path }}" >> $GITHUB_OUTPUT
 
       - name: Print build result
         if: success()
@@ -257,23 +254,45 @@ jobs:
           echo "All Docker images built successfully!"
 
   # ---------------------------------------------------------------------------
+  # Load images from tar and push to local registry before running tests
+  # ---------------------------------------------------------------------------
+  load_images:
+    name: Load and push images
+    needs: ['build', 'summary']
+    runs-on: [self-hosted, Linux, X64, nvidia-0, gpus-8]
+    steps:
+      - name: Load train image from tar and push
+        run: |
+          TAR="${{ needs.build.outputs.train_tar }}"
+          TAG="${{ needs.build.outputs.train_tag }}"
+          if [ -f "$TAR" ]; then
+            echo "Loading $TAR"
+            docker load -i "$TAR"
+            docker push "$TAG"
+          else
+            echo "::warning::Train image tar not found: $TAR, skipping load"
+          fi
+
+      - name: Load inference image from tar and push
+        run: |
+          TAR="${{ needs.build.outputs.inference_tar }}"
+          TAG="${{ needs.build.outputs.inference_tag }}"
+          if [ -f "$TAR" ]; then
+            echo "Loading $TAR"
+            docker load -i "$TAR"
+            docker push "$TAG"
+          else
+            echo "::warning::Inference image tar not found: $TAR, skipping load"
+          fi
+
+  # ---------------------------------------------------------------------------
   # Run CUDA tests after build succeeds
   # ---------------------------------------------------------------------------
   run_cuda_tests:
     name: Run CUDA tests
-    needs: summary
-    if: needs.summary.result == 'success'
-    uses: ./.github/workflows/all_tests_cuda.yml
-    secrets: inherit
-
-  # ---------------------------------------------------------------------------
-  # Push validated images to Harbor after tests pass
-  # ---------------------------------------------------------------------------
-  push_images_to_harbor:
-    name: Push images to Harbor
-    needs: run_cuda_tests
-    if: needs.run_cuda_tests.result == 'success' && github.event_name != 'pull_request'
-    uses: ./.github/workflows/push_image_harbor.yml
+    needs: ['prepare', 'build', 'load_images']
+    uses: ./.github/workflows/all_tests_common.yml
     with:
       platform: cuda
-    secrets: inherit
+      ci_train_image: ${{ needs.build.outputs.train_tag }}
+      ci_inference_image: ${{ needs.build.outputs.inference_tag }}

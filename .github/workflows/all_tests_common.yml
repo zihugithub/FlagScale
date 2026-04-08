@@ -7,6 +7,16 @@ on:
         required: true
         type: string
         description: Platform name (e.g., cuda, default)
+      ci_train_image:
+        required: false
+        type: string
+        description: Override train image (e.g., newly built image). Falls back to platform config if not set.
+        default: ""
+      ci_inference_image:
+        required: false
+        type: string
+        description: Override inference image. Falls back to platform config if not set.
+        default: ""
 
 jobs:
   checkout_and_config:
@@ -99,6 +109,14 @@ jobs:
 
           # Load configuration and group tests by task
           load_platform_config "$PLATFORM"
+
+          # Override images if provided as inputs
+          if [ -n "${{ inputs.ci_train_image }}" ]; then
+            echo "ci_train_image=${{ inputs.ci_train_image }}" >> $GITHUB_OUTPUT
+          fi
+          if [ -n "${{ inputs.ci_inference_image }}" ]; then
+            echo "ci_inference_image=${{ inputs.ci_inference_image }}" >> $GITHUB_OUTPUT
+          fi
 
   # CLI validation runs first (outside virtual env) as a gate for all subsequent tests
   cli_validation:

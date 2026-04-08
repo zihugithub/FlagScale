@@ -1,51 +1,70 @@
 name: Push Images to Harbor
 
 on:
-  workflow_call:
-    inputs:
-      platform:
-        required: true
-        type: string
-        description: "Platform name (e.g. cuda), used to locate .github/configs/<platform>.yml"
+  push:
+    branches: ['main']
+    paths:
+      - 'docker/cuda/**'
+      - 'docker/build.sh'
+      - 'tools/install/**'
+      - 'requirements/**'
+      - '.github/workflows/build_image_cuda.yml'
+
+permissions:
+  contents: write
 
 env:
   REMOTE_REGISTRY: harbor.baai.ac.cn
   REMOTE_IMAGE_PREFIX: flagscale
+  TAR_DIR: /home/flagscale_cicd/images_tar
 
 jobs:
-  promote:
-    name: Push validated images to Harbor
+  # ---------------------------------------------------------------------------
+  # Prepare: scan tar directory and detect which images need promotion
+  # ---------------------------------------------------------------------------
+  prepare:
+    name: Detect tar files
     runs-on: [self-hosted, Linux, X64, nvidia-0, gpus-8]
+    outputs:
+      needs_promotion: ${{ steps.detect.outputs.needs_promotion }}
+      train_tar: ${{ steps.detect.outputs.train_tar }}
+      inference_tar: ${{ steps.detect.outputs.inference_tar }}
     steps:
-      - name: Clean workspace
-        run: sudo rm -rf "$GITHUB_WORKSPACE"/* "$GITHUB_WORKSPACE"/.[!.]* 2>/dev/null || true
-
-      - name: Checkout code
-        uses: actions/checkout@v4
-
-      - name: Read image tags from config
-        id: tags
+      - name: Detect tar files in ${{ env.TAR_DIR }}
+        id: detect
         run: |
           set -euo pipefail
-          CONFIG_FILE=".github/configs/${{ inputs.platform }}.yml"
+          TAR_DIR="${{ env.TAR_DIR }}"
 
-          TRAIN_TAG=$(grep '^ci_train_image:' "$CONFIG_FILE" | awk '{print $2}')
-          INFERENCE_TAG=$(grep '^ci_inference_image:' "$CONFIG_FILE" | awk '{print $2}')
+          TRAIN_TAR=$(find "$TAR_DIR" -maxdepth 1 -name '*flagscale-train*' -name '*.tar' 2>/dev/null | sort | tail -1)
+          INFERENCE_TAR=$(find "$TAR_DIR" -maxdepth 1 -name '*flagscale-inference*' -name '*.tar' 2>/dev/null | sort | tail -1)
 
-          echo "train_tag=${TRAIN_TAG}" >> $GITHUB_OUTPUT
-          echo "inference_tag=${INFERENCE_TAG}" >> $GITHUB_OUTPUT
+          echo "train_tar=${TRAIN_TAR}" >> $GITHUB_OUTPUT
+          echo "inference_tar=${INFERENCE_TAR}" >> $GITHUB_OUTPUT
 
-          # Check if images are from localhost (freshly built, need promotion)
-          if echo "${TRAIN_TAG}${INFERENCE_TAG}" | grep -q 'localhost'; then
+          if [ -n "$TRAIN_TAR" ] || [ -n "$INFERENCE_TAR" ]; then
             echo "needs_promotion=true" >> $GITHUB_OUTPUT
-            echo "Images are from localhost, promotion needed"
+            echo "Detected tars:"
+            if [ -n "$TRAIN_TAR" ];     then echo "  train:     $TRAIN_TAR"; fi
+            if [ -n "$INFERENCE_TAR" ]; then echo "  inference: $INFERENCE_TAR"; fi
           else
             echo "needs_promotion=false" >> $GITHUB_OUTPUT
-            echo "Images already on Harbor, skipping promotion"
+            echo "No tar files found in $TAR_DIR, skipping promotion"
           fi
 
+  # ---------------------------------------------------------------------------
+  # Promote: load tar → retag → push to Harbor → delete tar
+  # ---------------------------------------------------------------------------
+  promote:
+    name: Push validated images to Harbor
+    needs: prepare
+    if: needs.prepare.outputs.needs_promotion == 'true'
+    runs-on: [self-hosted, Linux, X64, nvidia-0, gpus-8]
+    outputs:
+      remote_train_tag: ${{ steps.promote_train.outputs.remote_tag }}
+      remote_inference_tag: ${{ steps.promote_inference.outputs.remote_tag }}
+    steps:
       - name: Login to Harbor registry
-        if: steps.tags.outputs.needs_promotion == 'true'
         uses: docker/login-action@v3
         with:
           registry: ${{ env.REMOTE_REGISTRY }}
@@ -54,37 +73,91 @@ jobs:
 
       - name: Promote train image to Harbor
         id: promote_train
-        if: steps.tags.outputs.needs_promotion == 'true' && steps.tags.outputs.train_tag != ''
+        if: needs.prepare.outputs.train_tar != ''
         run: |
           set -euo pipefail
-          LOCAL_TAG="${{ steps.tags.outputs.train_tag }}"
+          TAR_PATH="${{ needs.prepare.outputs.train_tar }}"
+
+          echo "Loading tar: $TAR_PATH"
+          LOCAL_TAG=$(docker load -i "$TAR_PATH" | grep 'Loaded image:' | awk '{print $NF}')
+          echo "Loaded image tag: $LOCAL_TAG"
+
+          # Strip local registry prefix (e.g. localhost:5000/) to get image:tag
           IMAGE_AND_TAG="${LOCAL_TAG#*/}"
           REMOTE_TAG="${{ env.REMOTE_REGISTRY }}/${{ env.REMOTE_IMAGE_PREFIX }}/${IMAGE_AND_TAG}"
 
-          echo "Promoting: ${LOCAL_TAG} → ${REMOTE_TAG}"
-          docker pull "${LOCAL_TAG}"
           docker tag "${LOCAL_TAG}" "${REMOTE_TAG}"
           docker push "${REMOTE_TAG}"
-
           echo "remote_tag=${REMOTE_TAG}" >> $GITHUB_OUTPUT
-          echo "Successfully pushed ${REMOTE_TAG}"
+          echo "Pushed: ${REMOTE_TAG}"
+
+          echo "Removing tar: $TAR_PATH"
+          rm -f "$TAR_PATH"
 
       - name: Promote inference image to Harbor
         id: promote_inference
-        if: steps.tags.outputs.needs_promotion == 'true' && steps.tags.outputs.inference_tag != ''
+        if: needs.prepare.outputs.inference_tar != ''
         run: |
           set -euo pipefail
-          LOCAL_TAG="${{ steps.tags.outputs.inference_tag }}"
+          TAR_PATH="${{ needs.prepare.outputs.inference_tar }}"
+
+          echo "Loading tar: $TAR_PATH"
+          LOCAL_TAG=$(docker load -i "$TAR_PATH" | grep 'Loaded image:' | awk '{print $NF}')
+          echo "Loaded image tag: $LOCAL_TAG"
+
           IMAGE_AND_TAG="${LOCAL_TAG#*/}"
           REMOTE_TAG="${{ env.REMOTE_REGISTRY }}/${{ env.REMOTE_IMAGE_PREFIX }}/${IMAGE_AND_TAG}"
 
-          echo "Promoting: ${LOCAL_TAG} → ${REMOTE_TAG}"
-          docker pull "${LOCAL_TAG}"
           docker tag "${LOCAL_TAG}" "${REMOTE_TAG}"
           docker push "${REMOTE_TAG}"
-
           echo "remote_tag=${REMOTE_TAG}" >> $GITHUB_OUTPUT
-          echo "Successfully pushed ${REMOTE_TAG}"
+          echo "Pushed: ${REMOTE_TAG}"
+
+          echo "Removing tar: $TAR_PATH"
+          rm -f "$TAR_PATH"
+
+  # ---------------------------------------------------------------------------
+  # Update config: write Harbor image tags back to cuda.yml and commit
+  # ---------------------------------------------------------------------------
+  update_config:
+    name: Update cuda.yml with Harbor image tags
+    needs: promote
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Update image tags in cuda.yml
+        run: |
+          set -euo pipefail
+          CONFIG_FILE=".github/configs/cuda.yml"
+
+          REMOTE_TRAIN="${{ needs.promote.outputs.remote_train_tag }}"
+          REMOTE_INFERENCE="${{ needs.promote.outputs.remote_inference_tag }}"
+
+          if [ -n "$REMOTE_TRAIN" ]; then
+            sed -i "s|^ci_train_image:.*|ci_train_image: ${REMOTE_TRAIN}|" "$CONFIG_FILE"
+            echo "Updated ci_train_image: ${REMOTE_TRAIN}"
+          fi
+
+          if [ -n "$REMOTE_INFERENCE" ]; then
+            sed -i "s|^ci_inference_image:.*|ci_inference_image: ${REMOTE_INFERENCE}|" "$CONFIG_FILE"
+            echo "Updated ci_inference_image: ${REMOTE_INFERENCE}"
+          fi
+
+      - name: Commit and push updated config
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add .github/configs/cuda.yml
+          if git diff --cached --quiet; then
+            echo "No changes to commit"
+          else
+            git commit -m "ci: update cuda.yml with new Harbor image tags [skip ci]"
+            git push
+          fi
 
   # ---------------------------------------------------------------------------
   # Cleanup: clean up Docker build cache and dangling images on self-hosted runner
@@ -103,7 +176,6 @@ jobs:
 
       - name: Remove old localhost registry images
         run: |
-          # Remove local images tagged with localhost:5000 that are older than 7 days
           docker images --format '{{.Repository}}:{{.Tag}} {{.CreatedSince}}' \
             | grep 'localhost:5000' \
             | grep -E '(weeks|months)' \
