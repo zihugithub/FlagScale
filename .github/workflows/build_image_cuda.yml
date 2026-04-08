@@ -287,7 +287,7 @@ jobs:
       platform: cuda
       device: a100
       image: ${{ needs.build.outputs.train_tag }}
-      runs_on: '[self-hosted, Linux, X64, nvidia-0, gpus-8]'
+      runs_on: '["self-hosted", "Linux", "X64", "nvidia-0", "gpus-8"]'
       container_volumes: '["/home/flagscale_cicd/docker/docker_build/docker_data:/home/gitlab-runner/data", "/home/flagscale_cicd/docker/docker_build/docker_tokenizers:/home/gitlab-runner/tokenizers"]'
       container_options: "--gpus all --shm-size=500g --hostname flagscale_cicd --user root --ulimit nofile=65535:65535"
       source_artifact: flagscale-source-${{ github.sha }}
