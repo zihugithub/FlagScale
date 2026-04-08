@@ -78,6 +78,7 @@ env:
   PYTHON_VERSION: '3.12'
   UV_VERSION: '0.7.2'
   PKG_MGR: ${{ inputs.pkg_mgr || 'conda' }}
+  TAR_DIR: /home/yefubao/images_tar
 
 jobs:
   # ---------------------------------------------------------------------------
@@ -102,7 +103,8 @@ jobs:
             echo 'matrix={"task":["${{ inputs.task }}"]}' >> $GITHUB_OUTPUT
           else
             # PR or build_all_tasks=true: build all tasks
-            echo 'matrix={"task":["train","inference","all"]}' >> $GITHUB_OUTPUT
+            # echo 'matrix={"task":["train","inference","all"]}' >> $GITHUB_OUTPUT
+            echo 'matrix={"task":["train"]}' >> $GITHUB_OUTPUT
           fi
 
       - name: Set build parameters
@@ -174,7 +176,8 @@ jobs:
           IMAGE_NAME="flagscale-${TASK}"
           TAG="${TARGET}-cu${CUDA_MAJOR}${CUDA_MINOR}-py${PYTHON_VERSION}-${TIMESTAMP}"
 
-          BUILD_TAG="${{ env.REGISTRY }}/${IMAGE_NAME}:${TAG}"
+          # BUILD_TAG="${{ env.REGISTRY }}/${IMAGE_NAME}:${TAG}"
+          BUILD_TAG="localhost:5000/flagscale-train:dev-cu128-py3.12-20260228210721"
 
           # Derived build arguments
           BASE_IMAGE="nvidia/cuda:${CUDA_VERSION}-devel-ubuntu${UBUNTU_VERSION}"
@@ -199,27 +202,27 @@ jobs:
             echo "| Build Tag | \`${BUILD_TAG}\` |"
           } >> $GITHUB_STEP_SUMMARY
 
-      - name: Build Docker image
-        uses: docker/build-push-action@v6
-        with:
-          context: .
-          file: docker/cuda/Dockerfile.${{ matrix.task }}
-          target: ${{ needs.prepare.outputs.target }}
-          load: true
-          tags: ${{ steps.meta.outputs.build_tag }}
-          build-args: |
-            BASE_IMAGE=${{ steps.meta.outputs.base_image }}
-            CUDA_VERSION=${{ env.CUDA_VERSION }}
-            UBUNTU_VERSION=${{ env.UBUNTU_VERSION }}
-            PYTHON_VERSION=${{ env.PYTHON_VERSION }}
-            UV_VERSION=${{ env.UV_VERSION }}
-            PYTORCH_INDEX=${{ steps.meta.outputs.pytorch_index }}
-            PKG_MGR=${{ env.PKG_MGR }}
-          no-cache: ${{ needs.prepare.outputs.no_cache == 'true' }}
+      # - name: Build Docker image
+      #   uses: docker/build-push-action@v6
+      #   with:
+      #     context: .
+      #     file: docker/cuda/Dockerfile.${{ matrix.task }}
+      #     target: ${{ needs.prepare.outputs.target }}
+      #     load: true
+      #     tags: ${{ steps.meta.outputs.build_tag }}
+      #     build-args: |
+      #       BASE_IMAGE=${{ steps.meta.outputs.base_image }}
+      #       CUDA_VERSION=${{ env.CUDA_VERSION }}
+      #       UBUNTU_VERSION=${{ env.UBUNTU_VERSION }}
+      #       PYTHON_VERSION=${{ env.PYTHON_VERSION }}
+      #       UV_VERSION=${{ env.UV_VERSION }}
+      #       PYTORCH_INDEX=${{ steps.meta.outputs.pytorch_index }}
+      #       PKG_MGR=${{ env.PKG_MGR }}
+      #     no-cache: ${{ needs.prepare.outputs.no_cache == 'true' }}
 
       - name: Save image as tar
         run: |
-          TAR_DIR="/home/yefubao/images_tar"
+          TAR_DIR="${{ env.TAR_DIR }}"
           mkdir -p "$TAR_DIR"
           IMAGE_TAG="${{ steps.meta.outputs.build_tag }}"
           # Use image name with tag as filename (replace / and : with -)
