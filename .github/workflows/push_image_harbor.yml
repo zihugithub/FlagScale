@@ -2,7 +2,7 @@ name: Push Images to Harbor
 
 on:
   push:
-    branches: [main]
+    branches: [auto-build-image-20260320]
     paths:
       - 'docker/cuda/**'
       - 'docker/build.sh'
