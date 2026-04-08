@@ -45,8 +45,8 @@ jobs:
           if [ -n "$TRAIN_TAR" ] || [ -n "$INFERENCE_TAR" ]; then
             echo "needs_promotion=true" >> $GITHUB_OUTPUT
             echo "Detected tars:"
-            [ -n "$TRAIN_TAR" ]     && echo "  train:     $TRAIN_TAR"
-            [ -n "$INFERENCE_TAR" ] && echo "  inference: $INFERENCE_TAR"
+            if [ -n "$TRAIN_TAR" ];     then echo "  train:     $TRAIN_TAR"; fi
+            if [ -n "$INFERENCE_TAR" ]; then echo "  inference: $INFERENCE_TAR"; fi
           else
             echo "needs_promotion=false" >> $GITHUB_OUTPUT
             echo "No tar files found in $TAR_DIR, skipping promotion"
