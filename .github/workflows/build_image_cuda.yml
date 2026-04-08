@@ -336,7 +336,7 @@ jobs:
       env_name: 'flagscale-train'
       env_path: '/root/miniconda3'
 
-    inference_tests:
+  inference_tests:
     name: Inference tests (CUDA)
     needs: ['prepare', 'summary', 'upload_source']
     if: ${{ fromJson(needs.prepare.outputs.matrix) }} == "inference"
