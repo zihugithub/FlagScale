@@ -42,10 +42,7 @@ on:
         type: boolean
         default: false
 
-  push:
-    branches: ["auto-build-image-20260320"]
-
-  # Trigger on PRs that modify docker-related files
+  # Trigger on PRs that modify docker-related files (build + test only, no push)
   pull_request:
     branches: [main]
     paths:
@@ -130,8 +127,8 @@ jobs:
       inference_tag: ${{ steps.export.outputs.inference_tag }}
       all_tag: ${{ steps.export.outputs.all_tag }}
     steps:
-      # - name: Clean workspace
-      #   run: rm -rf "$GITHUB_WORKSPACE"/* "$GITHUB_WORKSPACE"/.[!.]* 2>/dev/null || true
+      - name: Clean workspace
+        run: sudo rm -rf "$GITHUB_WORKSPACE"/* "$GITHUB_WORKSPACE"/.[!.]* 2>/dev/null || true
 
       - name: Checkout code
         uses: actions/checkout@v4
@@ -163,8 +160,9 @@ jobs:
           TAG="${TARGET}-cu${CUDA_MAJOR}${CUDA_MINOR}-py${PYTHON_VERSION}"
           TAG_TS="${TAG}-${TIMESTAMP}"
 
-          # Build tag (with timestamp, used during docker build)
-          BUILD_TAG="${{ env.REGISTRY }}/${IMAGE_NAME}:${TAG_TS}"
+          # # Build tag (with timestamp, used during docker build)
+          # BUILD_TAG="${{ env.REGISTRY }}/${IMAGE_NAME}:${TAG_TS}"
+          BUILD_TAG="flagscale-train:dev-cu128-py3.12-202604071404-ye"
           # Registry tag (without timestamp, used when pushing to registry)
           LOCAL_TAG="${{ env.REGISTRY }}/${IMAGE_NAME}:${TAG}"
 
@@ -212,25 +210,12 @@ jobs:
       #       PKG_MGR=${{ env.PKG_MGR }}
       #     no-cache: ${{ needs.prepare.outputs.no_cache == 'true' }}
 
-      # - name: Push Docker image
-      #   if: needs.prepare.outputs.push == 'true'
-      #   run: |
-      #     docker tag ${{ steps.meta.outputs.build_tag }} ${{ steps.meta.outputs.local_tag }}
-      #     docker push ${{ steps.meta.outputs.local_tag }}
-
       - name: Export image tag for config update
         id: export
         if: success() && needs.prepare.outputs.push == 'true'
         run: |
           TASK="${{ matrix.task }}"
           echo "${TASK}_tag=${{ steps.meta.outputs.local_tag }}" >> $GITHUB_OUTPUT
-
-      - name: Print build result
-        if: success()
-        run: |
-          echo "" >> $GITHUB_STEP_SUMMARY
-          echo "**Result:** Built successfully" >> $GITHUB_STEP_SUMMARY
-          echo "**Pushed:** ${{ needs.prepare.outputs.push }}" >> $GITHUB_STEP_SUMMARY
 
   # ---------------------------------------------------------------------------
   # Summary: verify all builds completed
@@ -250,23 +235,64 @@ jobs:
           echo "All Docker images built successfully!"
 
   # ---------------------------------------------------------------------------
-  # Run CUDA tests after build succeeds
+  # Checkout and upload source artifact for downstream test jobs
   # ---------------------------------------------------------------------------
-  run_cuda_tests:
-    name: Run CUDA tests
+  upload_source:
+    name: Checkout and upload source
     needs: summary
-    if: needs.summary.result == 'success'
-    uses: ./.github/workflows/all_tests_cuda.yml
-    secrets: inherit
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          repository: ${{ github.event.pull_request.head.repo.full_name }}
+          ref: ${{ github.event.pull_request.head.ref }}
+          ssh-strict: true
+          ssh-user: git
+          persist-credentials: false
+          clean: true
+          sparse-checkout-cone-mode: true
+          fetch-tags: false
+          show-progress: true
+          lfs: false
+          submodules: false
+          set-safe-directory: true
+
+      - name: Create source code tarball for distribution
+        run: |
+          tar -czf /tmp/flagscale-source.tar.gz \
+            --exclude='.git' \
+            --exclude='*.pyc' \
+            --exclude='__pycache__' \
+            .
+
+      - name: Upload source code artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: flagscale-source-${{ github.sha }}
+          path: /tmp/flagscale-source.tar.gz
+          retention-days: 1
+          compression-level: 0
 
   # ---------------------------------------------------------------------------
-  # Push validated images to Harbor after tests pass
+  # Run CUDA tests after build succeeds
   # ---------------------------------------------------------------------------
-  push_images_to_harbor:
-    name: Push images to Harbor
-    needs: run_cuda_tests
-    if: needs.run_cuda_tests.result == 'success'
-    uses: ./.github/workflows/push_image_harbor.yml
+
+  unit_tests:
+    name: Unit tests (CUDA)
+    needs: ['prepare', 'summary', 'upload_source']
+    if: ${{ fromJson(needs.prepare.outputs.matrix) }} == "train"
+    uses: ./.github/workflows/unit_tests_common.yml
     with:
       platform: cuda
-    secrets: inherit
+      device: a100
+      image: ${{ needs.build.outputs.train_tag }}
+      runs_on: ["self-hosted", "Linux", "X64", "nvidia-0", "gpus-8"]
+      container_volumes: 
+        - /home/flagscale_cicd/docker/docker_build/docker_data:/home/gitlab-runner/data
+        - /home/flagscale_cicd/docker/docker_build/docker_tokenizers:/home/gitlab-runner/tokenizers
+      container_options: "--gpus all --shm-size=500g --hostname flagscale_cicd --user root --ulimit nofile=65535:65535"
+      source_artifact: flagscale-source-${{ github.sha }}
+      pkg_mgr: 'conda'
+      env_name: 'flagscale-train'
+      env_path: '/root/miniconda3'
