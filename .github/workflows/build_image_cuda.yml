@@ -135,7 +135,7 @@ jobs:
       all_tag: ${{ steps.export.outputs.all_tag }}
     steps:
       - name: Clean workspace
-        run: sudo rm -rf "$GITHUB_WORKSPACE"/* "$GITHUB_WORKSPACE"/.[!.]* 2>/dev/null || true
+        run: sudo find "$GITHUB_WORKSPACE" -mindepth 1 -delete 2>/dev/null || true
 
       - name: Checkout code
         uses: actions/checkout@v4
@@ -300,4 +300,55 @@ jobs:
       source_artifact: flagscale-source-${{ github.sha }}
       pkg_mgr: 'conda'
       env_name: 'flagscale-train'
+      env_path: '/root/miniconda3'
+
+  train_tests:
+    name: Train tests (CUDA)
+    needs: ['prepare', 'summary', 'upload_source']
+    if: ${{ fromJson(needs.prepare.outputs.matrix) }} == "train"
+    uses: ./.github/workflows/functional_tests_train.yml
+    with:
+      platform: cuda
+      device: a100
+      image: ${{ needs.build.outputs.train_tag }}
+      runs_on: '["self-hosted", "Linux", "X64", "nvidia-0", "gpus-8"]'
+      container_volumes: '["/home/flagscale_cicd/docker/docker_build/docker_data:/home/gitlab-runner/data", "/home/flagscale_cicd/docker/docker_build/docker_tokenizers:/home/gitlab-runner/tokenizers"]'
+      container_options: "--gpus all --shm-size=500g --hostname flagscale_cicd --user root --ulimit nofile=65535:65535"
+      source_artifact: flagscale-source-${{ github.sha }}
+      pkg_mgr: 'conda'
+      env_name: 'flagscale-train'
+      env_path: '/root/miniconda3'
+
+  hetero_train_tests:
+    name: Hetero train tests (CUDA)
+    needs: ['prepare', 'summary', 'upload_source']
+    if: ${{ fromJson(needs.prepare.outputs.matrix) }} == "train"
+    uses: ./.github/workflows/functional_tests_hetero_train.yml
+    with:
+      platform: cuda
+      device: a100
+      image: ${{ needs.build.outputs.train_tag }}
+      runs_on: '["self-hosted", "Linux", "X64", "nvidia-0", "gpus-8"]'
+      container_volumes: '["/home/flagscale_cicd/docker/docker_build/docker_data:/home/gitlab-runner/data", "/home/flagscale_cicd/docker/docker_build/docker_tokenizers:/home/gitlab-runner/tokenizers"]'
+      container_options: "--gpus all --shm-size=500g --hostname flagscale_cicd --user root --ulimit nofile=65535:65535"
+      source_artifact: flagscale-source-${{ github.sha }}
+      pkg_mgr: 'conda'
+      env_name: 'flagscale-train'
+      env_path: '/root/miniconda3'
+
+    inference_tests:
+    name: Inference tests (CUDA)
+    needs: ['prepare', 'summary', 'upload_source']
+    if: ${{ fromJson(needs.prepare.outputs.matrix) }} == "inference"
+    uses: ./.github/workflows/functional_tests_inference.yml
+    with:
+      platform: cuda
+      device: a100
+      image: ${{ needs.build.outputs.inference_tag }}
+      runs_on: '["self-hosted", "Linux", "X64", "nvidia-0", "gpus-8"]'
+      container_volumes: '["/home/flagscale_cicd/docker/docker_build/docker_data:/home/gitlab-runner/data", "/home/flagscale_cicd/docker/docker_build/docker_tokenizers:/home/gitlab-runner/tokenizers"]'
+      container_options: "--gpus all --shm-size=500g --hostname flagscale_cicd --user root --ulimit nofile=65535:65535"
+      source_artifact: flagscale-source-${{ github.sha }}
+      pkg_mgr: 'conda'
+      env_name: 'flagscale-inference'
       env_path: '/root/miniconda3'
