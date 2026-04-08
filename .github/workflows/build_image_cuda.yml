@@ -141,7 +141,9 @@ jobs:
       all_tar: ${{ steps.export.outputs.all_tar }}
     steps:
       - name: Clean workspace
-        run: sudo rm -rf "$GITHUB_WORKSPACE"/* "$GITHUB_WORKSPACE"/.[!.]* 2>/dev/null || true
+        run: |
+          echo "GITHUB_WORKSPACE: $GITHUB_WORKSPACE"
+          sudo rm -rf "$GITHUB_WORKSPACE"/* "$GITHUB_WORKSPACE"/.[!.]* 2>/dev/null || true
 
       - name: Checkout code
         uses: actions/checkout@v4
