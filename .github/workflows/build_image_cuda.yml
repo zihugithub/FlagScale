@@ -97,8 +97,7 @@ jobs:
             echo 'matrix={"task":["${{ inputs.task }}"]}' >> $GITHUB_OUTPUT
           else
             # PR or build_all_tasks=true: build all tasks
-            # echo 'matrix={"task":["train","inference","all"]}' >> $GITHUB_OUTPUT
-            echo 'matrix={"task":["train"]}' >> $GITHUB_OUTPUT
+            echo 'matrix={"task":["train","inference","all"]}' >> $GITHUB_OUTPUT
           fi
 
       - name: Set build parameters

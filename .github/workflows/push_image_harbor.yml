@@ -1,14 +1,9 @@
 name: Push Images to Harbor
 
 on:
-  push:
-    branches: ['main']
-    paths:
-      - 'docker/cuda/**'
-      - 'docker/build.sh'
-      - 'tools/install/**'
-      - 'requirements/**'
-      - '.github/workflows/build_image_cuda.yml'
+  workflow_run:
+    workflows: ['Build Docker Images - CUDA']
+    types: [completed]
 
 permissions:
   contents: write
@@ -25,6 +20,7 @@ jobs:
   prepare:
     name: Detect tar files
     runs-on: [self-hosted, Linux, X64, nvidia-0, gpus-8]
+    if: github.event.workflow_run.conclusion == 'success'
     outputs:
       needs_promotion: ${{ steps.detect.outputs.needs_promotion }}
       train_tar: ${{ steps.detect.outputs.train_tar }}
