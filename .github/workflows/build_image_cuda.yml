@@ -213,11 +213,11 @@ jobs:
       - name: Save image as tar
         run: |
           TAR_DIR="${{ env.TAR_DIR }}"
-          mkdir -p "$TAR_DIR"
+          sudo mkdir -p "$TAR_DIR"
           IMAGE_TAG="${{ steps.meta.outputs.build_tag }}"
           # Use image name with tag as filename (replace / and : with -)
           TAR_NAME=$(echo "$IMAGE_TAG" | tr '/: ' '---').tar
-          docker save "$IMAGE_TAG" -o "${TAR_DIR}/${TAR_NAME}"
+          sudo docker save "$IMAGE_TAG" -o "${TAR_DIR}/${TAR_NAME}"
           echo "tar_path=${TAR_DIR}/${TAR_NAME}" >> $GITHUB_OUTPUT
         id: save_tar
 

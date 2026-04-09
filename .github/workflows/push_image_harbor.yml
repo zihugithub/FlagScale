@@ -88,7 +88,7 @@ jobs:
           echo "Pushed: ${REMOTE_TAG}"
 
           echo "Removing tar: $TAR_PATH"
-          rm -f "$TAR_PATH"
+          sudo rm -f "$TAR_PATH"
 
       - name: Promote inference image to Harbor
         id: promote_inference
