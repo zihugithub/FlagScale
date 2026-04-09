@@ -266,7 +266,7 @@ jobs:
           TAG="${{ needs.build.outputs.train_tag }}"
           if [ -f "$TAR" ]; then
             echo "Loading $TAR"
-            docker load -i "$TAR"
+            sudo docker load -i "$TAR"
             docker push "$TAG"
           else
             echo "::warning::Train image tar not found: $TAR, skipping load"
@@ -278,7 +278,7 @@ jobs:
           TAG="${{ needs.build.outputs.inference_tag }}"
           if [ -f "$TAR" ]; then
             echo "Loading $TAR"
-            docker load -i "$TAR"
+            sudo docker load -i "$TAR"
             docker push "$TAG"
           else
             echo "::warning::Inference image tar not found: $TAR, skipping load"

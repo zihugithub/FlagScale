@@ -1,9 +1,14 @@
 name: Push Images to Harbor
 
 on:
-  workflow_run:
-    workflows: ['Build Docker Images - CUDA']
-    types: [completed]
+  push:
+    branches: [main]
+    paths:
+      - 'docker/cuda/**'
+      - 'docker/build.sh'
+      - 'tools/install/**'
+      - 'requirements/**'
+      - '.github/workflows/build_image_cuda.yml'
 
 permissions:
   contents: write
@@ -20,11 +25,11 @@ jobs:
   prepare:
     name: Detect tar files
     runs-on: [self-hosted, Linux, X64, nvidia-0, gpus-8]
-    if: github.event.workflow_run.conclusion == 'success'
     outputs:
       needs_promotion: ${{ steps.detect.outputs.needs_promotion }}
       train_tar: ${{ steps.detect.outputs.train_tar }}
       inference_tar: ${{ steps.detect.outputs.inference_tar }}
+      all_tar: ${{ steps.detect.outputs.all_tar }}
     steps:
       - name: Detect tar files in ${{ env.TAR_DIR }}
         id: detect
@@ -34,15 +39,18 @@ jobs:
 
           TRAIN_TAR=$(find "$TAR_DIR" -maxdepth 1 -name '*flagscale-train*' -name '*.tar' 2>/dev/null | sort | tail -1)
           INFERENCE_TAR=$(find "$TAR_DIR" -maxdepth 1 -name '*flagscale-inference*' -name '*.tar' 2>/dev/null | sort | tail -1)
+          ALL_TAR=$(find "$TAR_DIR" -maxdepth 1 -name '*flagscale-all*' -name '*.tar' 2>/dev/null | sort | tail -1)
 
           echo "train_tar=${TRAIN_TAR}" >> $GITHUB_OUTPUT
           echo "inference_tar=${INFERENCE_TAR}" >> $GITHUB_OUTPUT
+          echo "all_tar=${ALL_TAR}" >> $GITHUB_OUTPUT
 
-          if [ -n "$TRAIN_TAR" ] || [ -n "$INFERENCE_TAR" ]; then
+          if [ -n "$TRAIN_TAR" ] || [ -n "$INFERENCE_TAR" ] || [ -n "$ALL_TAR" ]; then
             echo "needs_promotion=true" >> $GITHUB_OUTPUT
             echo "Detected tars:"
             if [ -n "$TRAIN_TAR" ];     then echo "  train:     $TRAIN_TAR"; fi
             if [ -n "$INFERENCE_TAR" ]; then echo "  inference: $INFERENCE_TAR"; fi
+            if [ -n "$ALL_TAR" ];       then echo "  all:       $ALL_TAR"; fi
           else
             echo "needs_promotion=false" >> $GITHUB_OUTPUT
             echo "No tar files found in $TAR_DIR, skipping promotion"
@@ -59,6 +67,7 @@ jobs:
     outputs:
       remote_train_tag: ${{ steps.promote_train.outputs.remote_tag }}
       remote_inference_tag: ${{ steps.promote_inference.outputs.remote_tag }}
+      remote_all_tag: ${{ steps.promote_all.outputs.remote_tag }}
     steps:
       - name: Login to Harbor registry
         uses: docker/login-action@v3
@@ -75,7 +84,7 @@ jobs:
           TAR_PATH="${{ needs.prepare.outputs.train_tar }}"
 
           echo "Loading tar: $TAR_PATH"
-          LOCAL_TAG=$(docker load -i "$TAR_PATH" | grep 'Loaded image:' | awk '{print $NF}')
+          LOCAL_TAG=$(sudo docker load -i "$TAR_PATH" | grep 'Loaded image:' | awk '{print $NF}')
           echo "Loaded image tag: $LOCAL_TAG"
 
           # Strip local registry prefix (e.g. localhost:5000/) to get image:tag
@@ -98,7 +107,29 @@ jobs:
           TAR_PATH="${{ needs.prepare.outputs.inference_tar }}"
 
           echo "Loading tar: $TAR_PATH"
-          LOCAL_TAG=$(docker load -i "$TAR_PATH" | grep 'Loaded image:' | awk '{print $NF}')
+          LOCAL_TAG=$(sudo docker load -i "$TAR_PATH" | grep 'Loaded image:' | awk '{print $NF}')
+          echo "Loaded image tag: $LOCAL_TAG"
+
+          IMAGE_AND_TAG="${LOCAL_TAG#*/}"
+          REMOTE_TAG="${{ env.REMOTE_REGISTRY }}/${{ env.REMOTE_IMAGE_PREFIX }}/${IMAGE_AND_TAG}"
+
+          docker tag "${LOCAL_TAG}" "${REMOTE_TAG}"
+          docker push "${REMOTE_TAG}"
+          echo "remote_tag=${REMOTE_TAG}" >> $GITHUB_OUTPUT
+          echo "Pushed: ${REMOTE_TAG}"
+
+          echo "Removing tar: $TAR_PATH"
+          rm -f "$TAR_PATH"
+
+      - name: Promote all image to Harbor
+        id: promote_all
+        if: needs.prepare.outputs.all_tar != ''
+        run: |
+          set -euo pipefail
+          TAR_PATH="${{ needs.prepare.outputs.all_tar }}"
+
+          echo "Loading tar: $TAR_PATH"
+          LOCAL_TAG=$(sudo docker load -i "$TAR_PATH" | grep 'Loaded image:' | awk '{print $NF}')
           echo "Loaded image tag: $LOCAL_TAG"
 
           IMAGE_AND_TAG="${LOCAL_TAG#*/}"
@@ -132,6 +163,7 @@ jobs:
 
           REMOTE_TRAIN="${{ needs.promote.outputs.remote_train_tag }}"
           REMOTE_INFERENCE="${{ needs.promote.outputs.remote_inference_tag }}"
+          REMOTE_ALL="${{ needs.promote.outputs.remote_all_tag }}"
 
           if [ -n "$REMOTE_TRAIN" ]; then
             sed -i "s|^ci_train_image:.*|ci_train_image: ${REMOTE_TRAIN}|" "$CONFIG_FILE"
@@ -141,6 +173,11 @@ jobs:
           if [ -n "$REMOTE_INFERENCE" ]; then
             sed -i "s|^ci_inference_image:.*|ci_inference_image: ${REMOTE_INFERENCE}|" "$CONFIG_FILE"
             echo "Updated ci_inference_image: ${REMOTE_INFERENCE}"
+          fi
+
+          if [ -n "$REMOTE_ALL" ]; then
+            sed -i "s|^ci_image:.*|ci_image: ${REMOTE_ALL}|" "$CONFIG_FILE"
+            echo "Updated ci_image: ${REMOTE_ALL}"
           fi
 
       - name: Commit and push updated config
