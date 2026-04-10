@@ -39,6 +39,7 @@ container_options: >-
   --cap-add SYS_NICE
   --security-opt seccomp=unconfined
   --security-opt apparmor=unconfined
+  --privileged
 
 # =============================================================================
 # Package Manager Configuration
