@@ -2,7 +2,7 @@ name: cuda_tests
 
 on:
   push:
-    branches: ["test-report-flagcicd-260331"]
+    branches: ["main"]
   pull_request:
     branches: ["main"]
 
