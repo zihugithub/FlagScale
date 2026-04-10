@@ -35,7 +35,11 @@ container_options: >-
   --cap-add SYS_PTRACE
   --cap-add IPC_LOCK
   --cap-add NET_ADMIN
+  --cap-add SYS_RAWIO
+  --cap-add SYS_NICE
   --security-opt seccomp=unconfined
+  --security-opt apparmor=unconfined
+  --privileged
 
 # =============================================================================
 # Package Manager Configuration
