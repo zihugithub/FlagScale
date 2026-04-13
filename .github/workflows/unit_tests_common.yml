@@ -107,30 +107,8 @@ jobs:
         run: |
           git config --global --add safe.directory $PROJECT_ROOT
 
-      - name: Show hardware info
-        run: |
-          echo "=== GPU Info ==="
-          if command -v nvidia-smi &>/dev/null; then
-            nvidia-smi
-          elif command -v mx-smi &>/dev/null; then
-            mx-smi
-          elif command -v npu-smi &>/dev/null; then
-            npu-smi info
-          else
-            echo "No GPU management tool found (nvidia-smi / mx-smi / npu-smi)"
-          fi
-          echo "=== CPU Info ==="
-          lscpu | grep -E "Model name|Socket|Core|Thread|NUMA" || true
-          echo "=== Memory Info ==="
-          free -h
-          echo "=== Disk Info ==="
-          df -h
-      - name: List mount directory contents
-        run: |
-          echo "=== /home/gitlab-runner/data ==="
-          ls -lh /home/gitlab-runner/data/ || echo "Directory not found or empty"
-          echo "=== /home/gitlab-runner/tokenizers ==="
-          ls -lh /home/gitlab-runner/tokenizers/ || echo "Directory not found or empty"
+      - name: Check environment info
+        run: cd $PROJECT_ROOT && bash ./tests/test_utils/runners/check_env.sh
 
       - name: Install dependencies for unit tests
         if: inputs.platform == 'cuda'
