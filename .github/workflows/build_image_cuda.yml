@@ -124,6 +124,10 @@ jobs:
     name: Build ${{ matrix.task }}
     needs: prepare
     runs-on: [self-hosted, Linux, X64, nvidia-0, gpus-8]
+    env:
+      HTTP_PROXY: ${{ vars.HTTP_PROXY }}
+      HTTPS_PROXY: ${{ vars.HTTPS_PROXY }}
+      NO_PROXY: ${{ vars.NO_PROXY }}
     strategy:
       fail-fast: false
       matrix: ${{ fromJson(needs.prepare.outputs.matrix) }}
@@ -208,6 +212,12 @@ jobs:
             UV_VERSION=${{ env.UV_VERSION }}
             PYTORCH_INDEX=${{ steps.meta.outputs.pytorch_index }}
             PKG_MGR=${{ env.PKG_MGR }}
+            HTTP_PROXY=${{ env.HTTP_PROXY }}
+            HTTPS_PROXY=${{ env.HTTPS_PROXY }}
+            NO_PROXY=${{ env.NO_PROXY }}
+            http_proxy=${{ env.HTTP_PROXY }}
+            https_proxy=${{ env.HTTPS_PROXY }}
+            no_proxy=${{ env.NO_PROXY }}
           no-cache: ${{ needs.prepare.outputs.no_cache == 'true' }}
 
       - name: Save image as tar
