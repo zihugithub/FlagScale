@@ -52,15 +52,15 @@ on:
       - 'requirements/**'
       - '.github/workflows/build_image_cuda.yml'
 
-  # # Temporary: trigger on push to feature branch for testing
-  # push:
-  #   branches: [auto-build-image-20260320]
-  #   paths:
-  #     - 'docker/cuda/**'
-  #     - 'docker/build.sh'
-  #     - 'tools/install/**'
-  #     - 'requirements/**'
-  #     - '.github/workflows/build_image_cuda.yml'
+  # Temporary: trigger on push to feature branch for testing
+  push:
+    branches: [auto-build-image-20260320]
+    paths:
+      - 'docker/cuda/**'
+      - 'docker/build.sh'
+      - 'tools/install/**'
+      - 'requirements/**'
+      - '.github/workflows/build_image_cuda.yml'
 
 permissions:
   contents: read
