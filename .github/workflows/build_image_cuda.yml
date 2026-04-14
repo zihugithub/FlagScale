@@ -314,3 +314,4 @@ jobs:
       platform: cuda
       ci_train_image: ${{ needs.build.outputs.train_tag }}
       ci_inference_image: ${{ needs.build.outputs.inference_tag }}
+      runs_on: "[self-hosted, Linux, X64, nvidia-0, gpus-8]"
