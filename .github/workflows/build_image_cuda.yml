@@ -312,6 +312,6 @@ jobs:
     uses: ./.github/workflows/all_tests_common.yml
     with:
       platform: cuda
-      ci_train_image: ${{ needs.build.outputs.train_tag }}
+      ci_train_image: "localhost:5000/flagscale-train:dev-cu128-py3.12-20260228210721"
       ci_inference_image: ${{ needs.build.outputs.inference_tag }}
       runs_on: "[self-hosted, Linux, X64, nvidia-0, gpus-8]"
