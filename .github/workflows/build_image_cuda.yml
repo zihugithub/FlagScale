@@ -128,6 +128,7 @@ jobs:
       HTTP_PROXY: ${{ vars.HTTP_PROXY }}
       HTTPS_PROXY: ${{ vars.HTTPS_PROXY }}
       NO_PROXY: ${{ vars.NO_PROXY }}
+      # Note: vars.* may be empty for fork PRs; proxy is detected from runner env in the 'proxy' step
     strategy:
       fail-fast: false
       matrix: ${{ fromJson(needs.prepare.outputs.matrix) }}
@@ -196,6 +197,18 @@ jobs:
             echo "| Build Tag | \`${BUILD_TAG}\` |"
           } >> $GITHUB_STEP_SUMMARY
 
+      - name: Detect proxy from runner environment
+        id: proxy
+        run: |
+          # Read proxy from runner environment (works for both fork PRs and direct pushes)
+          HTTP_PROXY_VAL="${http_proxy:-${HTTP_PROXY:-}}"
+          HTTPS_PROXY_VAL="${https_proxy:-${HTTPS_PROXY:-}}"
+          NO_PROXY_VAL="${no_proxy:-${NO_PROXY:-}}"
+          echo "http_proxy=${HTTP_PROXY_VAL}" >> $GITHUB_OUTPUT
+          echo "https_proxy=${HTTPS_PROXY_VAL}" >> $GITHUB_OUTPUT
+          echo "no_proxy=${NO_PROXY_VAL}" >> $GITHUB_OUTPUT
+          echo "Detected proxies: HTTP=${HTTP_PROXY_VAL} HTTPS=${HTTPS_PROXY_VAL} NO_PROXY=${NO_PROXY_VAL}"
+
       - name: Build Docker image
         uses: docker/build-push-action@v6
         with:
@@ -212,12 +225,12 @@ jobs:
             UV_VERSION=${{ env.UV_VERSION }}
             PYTORCH_INDEX=${{ steps.meta.outputs.pytorch_index }}
             PKG_MGR=${{ env.PKG_MGR }}
-            HTTP_PROXY=${{ env.HTTP_PROXY }}
-            HTTPS_PROXY=${{ env.HTTPS_PROXY }}
-            NO_PROXY=${{ env.NO_PROXY }}
-            http_proxy=${{ env.HTTP_PROXY }}
-            https_proxy=${{ env.HTTPS_PROXY }}
-            no_proxy=${{ env.NO_PROXY }}
+            HTTP_PROXY=${{ steps.proxy.outputs.http_proxy }}
+            HTTPS_PROXY=${{ steps.proxy.outputs.https_proxy }}
+            NO_PROXY=${{ steps.proxy.outputs.no_proxy }}
+            http_proxy=${{ steps.proxy.outputs.http_proxy }}
+            https_proxy=${{ steps.proxy.outputs.https_proxy }}
+            no_proxy=${{ steps.proxy.outputs.no_proxy }}
           no-cache: ${{ needs.prepare.outputs.no_cache == 'true' }}
 
       - name: Save image as tar
