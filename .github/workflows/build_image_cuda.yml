@@ -205,54 +205,54 @@ jobs:
             echo "| Build Tag | \`${BUILD_TAG}\` |"
           } >> $GITHUB_STEP_SUMMARY
 
-      - name: Build Docker image
-        uses: docker/build-push-action@v6
-        with:
-          context: .
-          file: docker/cuda/Dockerfile.${{ matrix.task }}
-          target: ${{ needs.prepare.outputs.target }}
-          load: true
-          tags: ${{ steps.meta.outputs.build_tag }}
-          build-args: |
-            BASE_IMAGE=${{ steps.meta.outputs.base_image }}
-            CUDA_VERSION=${{ env.CUDA_VERSION }}
-            UBUNTU_VERSION=${{ env.UBUNTU_VERSION }}
-            PYTHON_VERSION=${{ env.PYTHON_VERSION }}
-            UV_VERSION=${{ env.UV_VERSION }}
-            PYTORCH_INDEX=${{ steps.meta.outputs.pytorch_index }}
-            PKG_MGR=${{ env.PKG_MGR }}
-            HTTP_PROXY=${{ env.HTTP_PROXY }}
-            HTTPS_PROXY=${{ env.HTTPS_PROXY }}
-            NO_PROXY=${{ env.NO_PROXY }}
-            http_proxy=${{ env.HTTP_PROXY }}
-            https_proxy=${{ env.HTTPS_PROXY }}
-            no_proxy=${{ env.NO_PROXY }}
-          no-cache: ${{ needs.prepare.outputs.no_cache == 'true' }}
+ #     - name: Build Docker image
+ #       uses: docker/build-push-action@v6
+ #       with:
+  #        context: .
+   #       file: docker/cuda/Dockerfile.${{ matrix.task }}
+    #      target: ${{ needs.prepare.outputs.target }}
+     #     load: true
+      #    tags: ${{ steps.meta.outputs.build_tag }}
+       #   build-args: |
+        #    BASE_IMAGE=${{ steps.meta.outputs.base_image }}
+#            CUDA_VERSION=${{ env.CUDA_VERSION }}
+#            UBUNTU_VERSION=${{ env.UBUNTU_VERSION }}
+#            PYTHON_VERSION=${{ env.PYTHON_VERSION }}
+#            UV_VERSION=${{ env.UV_VERSION }}
+#            PYTORCH_INDEX=${{ steps.meta.outputs.pytorch_index }}
+#            PKG_MGR=${{ env.PKG_MGR }}
+#            HTTP_PROXY=${{ env.HTTP_PROXY }}
+#            HTTPS_PROXY=${{ env.HTTPS_PROXY }}
+#            NO_PROXY=${{ env.NO_PROXY }}
+#            http_proxy=${{ env.HTTP_PROXY }}
+#            https_proxy=${{ env.HTTPS_PROXY }}
+#            no_proxy=${{ env.NO_PROXY }}
+#          no-cache: ${{ needs.prepare.outputs.no_cache == 'true' }}
 
-      - name: Save image as tar
-        run: |
-          TAR_DIR="${{ env.TAR_DIR }}"
-          mkdir -p "$TAR_DIR"
-          IMAGE_TAG="${{ steps.meta.outputs.build_tag }}"
-          # Use image name with tag as filename (replace / and : with -)
-          TAR_NAME=$(echo "$IMAGE_TAG" | tr '/: ' '---').tar
-          docker save "$IMAGE_TAG" -o "${TAR_DIR}/${TAR_NAME}"
-          echo "tar_path=${TAR_DIR}/${TAR_NAME}" >> $GITHUB_OUTPUT
-        id: save_tar
+ #     - name: Save image as tar
+ #       run: |
+ #         TAR_DIR="${{ env.TAR_DIR }}"
+ #         mkdir -p "$TAR_DIR"
+ #         IMAGE_TAG="${{ steps.meta.outputs.build_tag }}"
+ #         # Use image name with tag as filename (replace / and : with -)
+ #         TAR_NAME=$(echo "$IMAGE_TAG" | tr '/: ' '---').tar
+ #         docker save "$IMAGE_TAG" -o "${TAR_DIR}/${TAR_NAME}"
+ #         echo "tar_path=${TAR_DIR}/${TAR_NAME}" >> $GITHUB_OUTPUT
+ #       id: save_tar
 
-      - name: Export image tag for config update
-        id: export
-        run: |
-          TASK="${{ matrix.task }}"
-          echo "${TASK}_tag=${{ steps.meta.outputs.build_tag }}" >> $GITHUB_OUTPUT
-          echo "${TASK}_tar=${{ steps.save_tar.outputs.tar_path }}" >> $GITHUB_OUTPUT
+ #     - name: Export image tag for config update
+ #       id: export
+ #       run: |
+ #         TASK="${{ matrix.task }}"
+ #         echo "${TASK}_tag=${{ steps.meta.outputs.build_tag }}" >> $GITHUB_OUTPUT
+ #         echo "${TASK}_tar=${{ steps.save_tar.outputs.tar_path }}" >> $GITHUB_OUTPUT
 
-      - name: Print build result
-        if: success()
-        run: |
-          echo "" >> $GITHUB_STEP_SUMMARY
-          echo "**Result:** Built successfully" >> $GITHUB_STEP_SUMMARY
-          echo "**Pushed:** ${{ needs.prepare.outputs.push }}" >> $GITHUB_STEP_SUMMARY
+ #     - name: Print build result
+ #       if: success()
+ #       run: |
+ #         echo "" >> $GITHUB_STEP_SUMMARY
+ #         echo "**Result:** Built successfully" >> $GITHUB_STEP_SUMMARY
+ #         echo "**Pushed:** ${{ needs.prepare.outputs.push }}" >> $GITHUB_STEP_SUMMARY
 
   # ---------------------------------------------------------------------------
   # Summary: verify all builds completed
@@ -274,41 +274,41 @@ jobs:
   # ---------------------------------------------------------------------------
   # Load images from tar and push to local registry before running tests
   # ---------------------------------------------------------------------------
-  load_images:
-    name: Load and push images
-    needs: ['build', 'summary']
-    runs-on: [self-hosted, Linux, X64, nvidia-0, gpus-8]
-    steps:
-      - name: Load train image from tar and push
-        run: |
-          TAR="${{ needs.build.outputs.train_tar }}"
-          TAG="${{ needs.build.outputs.train_tag }}"
-          if [ -f "$TAR" ]; then
-            echo "Loading $TAR"
-            docker load -i "$TAR"
-            docker push "$TAG"
-          else
-            echo "::warning::Train image tar not found: $TAR, skipping load"
-          fi
+  #load_images:
+  #  name: Load and push images
+  #  needs: ['build', 'summary']
+  #  runs-on: [self-hosted, Linux, X64, nvidia-0, gpus-8]
+  #  steps:
+  #    - name: Load train image from tar and push
+  #      run: |
+  #        TAR="${{ needs.build.outputs.train_tar }}"
+  #        TAG="${{ needs.build.outputs.train_tag }}"
+  #        if [ -f "$TAR" ]; then
+  #          echo "Loading $TAR"
+  #          docker load -i "$TAR"
+  #          docker push "$TAG"
+  #        else
+  #          echo "::warning::Train image tar not found: $TAR, skipping load"
+  #        fi
 
-      - name: Load inference image from tar and push
-        run: |
-          TAR="${{ needs.build.outputs.inference_tar }}"
-          TAG="${{ needs.build.outputs.inference_tag }}"
-          if [ -f "$TAR" ]; then
-            echo "Loading $TAR"
-            docker load -i "$TAR"
-            docker push "$TAG"
-          else
-            echo "::warning::Inference image tar not found: $TAR, skipping load"
-          fi
+  #    - name: Load inference image from tar and push
+  #      run: |
+  #        TAR="${{ needs.build.outputs.inference_tar }}"
+  #        TAG="${{ needs.build.outputs.inference_tag }}"
+  #        if [ -f "$TAR" ]; then
+  #          echo "Loading $TAR"
+  #          docker load -i "$TAR"
+  #          docker push "$TAG"
+  #        else
+  #          echo "::warning::Inference image tar not found: $TAR, skipping load"
+  #        fi
 
   # ---------------------------------------------------------------------------
   # Run CUDA tests after build succeeds
   # ---------------------------------------------------------------------------
   run_cuda_tests:
     name: Run CUDA tests
-    needs: ['prepare', 'build', 'load_images']
+    needs: ['prepare', 'build']
     uses: ./.github/workflows/all_tests_common.yml
     with:
       platform: cuda
