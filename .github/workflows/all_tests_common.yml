@@ -122,8 +122,11 @@ jobs:
           if [ -n "${{ inputs.ci_inference_image }}" ]; then
             echo "ci_inference_image=${{ inputs.ci_inference_image }}" >> $GITHUB_OUTPUT
           fi
-          if [ -n "${{ inputs.runs_on }}" ]; then
-            echo "runs_on=${{ inputs.runs_on }}" >> $GITHUB_OUTPUT
+          # Use single-quoted assignment so bash treats the JSON value literally
+          # (double quotes inside the JSON would break echo "runs_on=${{ inputs.runs_on }}")
+          RUNS_ON_INPUT='${{ inputs.runs_on }}'
+          if [ -n "$RUNS_ON_INPUT" ]; then
+            { echo 'runs_on<<EOFRUNSON_INPUT'; echo "$RUNS_ON_INPUT"; echo 'EOFRUNSON_INPUT'; } >> $GITHUB_OUTPUT
           fi
 
   # # CLI validation runs first (outside virtual env) as a gate for all subsequent tests
@@ -164,6 +167,7 @@ jobs:
     needs:
       - checkout_and_config
       # - unit_tests
+    if: needs.checkout_and_config.outputs.train_test_matrix != '[]'
     uses: ./.github/workflows/functional_tests_train.yml
     with:
       platform: ${{ inputs.platform }}
