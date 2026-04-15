@@ -154,34 +154,34 @@ jobs:
       env_name: ${{ needs.checkout_and_config.outputs.env_name_train }}
       env_path: ${{ needs.checkout_and_config.outputs.env_path }}
 
-  # unit_tests:
-  #   needs:
-  #     - checkout_and_config
-  #     - cli_validation
-  #   if: fromJson(needs.checkout_and_config.outputs.device_types)[0] != null
-  #   strategy:
-  #     fail-fast: false
-  #     matrix:
-  #       device: ${{ fromJson(needs.checkout_and_config.outputs.device_types) }}
-  #   uses: ./.github/workflows/unit_tests_common.yml
-  #   name: unit_tests
-  #   with:
-  #     platform: ${{ inputs.platform }}
-  #     device: ${{ matrix.device }}
-  #     image: ${{ needs.checkout_and_config.outputs.ci_train_image }}
-  #     runs_on: ${{ needs.checkout_and_config.outputs.runs_on }}
-  #     container_volumes: ${{ needs.checkout_and_config.outputs.container_volumes }}
-  #     container_options: ${{ needs.checkout_and_config.outputs.container_options }}
-  #     source_artifact: flagscale-source-${{ github.sha }}
-  #     pkg_mgr: ${{ needs.checkout_and_config.outputs.pkg_mgr }}
-  #     env_name: ${{ needs.checkout_and_config.outputs.env_name_train }}
-  #     env_path: ${{ needs.checkout_and_config.outputs.env_path }}
+  unit_tests:
+    needs:
+      - checkout_and_config
+      - cli_validation
+    if: fromJson(needs.checkout_and_config.outputs.device_types)[0] != null
+    strategy:
+      fail-fast: false
+      matrix:
+        device: ${{ fromJson(needs.checkout_and_config.outputs.device_types) }}
+    uses: ./.github/workflows/unit_tests_common.yml
+    name: unit_tests
+    with:
+      platform: ${{ inputs.platform }}
+      device: ${{ matrix.device }}
+      image: ${{ needs.checkout_and_config.outputs.ci_train_image }}
+      runs_on: ${{ needs.checkout_and_config.outputs.runs_on }}
+      container_volumes: ${{ needs.checkout_and_config.outputs.container_volumes }}
+      container_options: ${{ needs.checkout_and_config.outputs.container_options }}
+      source_artifact: flagscale-source-${{ github.sha }}
+      pkg_mgr: ${{ needs.checkout_and_config.outputs.pkg_mgr }}
+      env_name: ${{ needs.checkout_and_config.outputs.env_name_train }}
+      env_path: ${{ needs.checkout_and_config.outputs.env_path }}
 
   functional_tests_train:
     needs:
       - checkout_and_config
       - cli_validation
-      # - unit_tests
+      - unit_tests
     if: fromJson(needs.checkout_and_config.outputs.train_test_matrix)[0] != null
     uses: ./.github/workflows/functional_tests_train.yml
     with:
@@ -200,7 +200,7 @@ jobs:
     needs:
       - checkout_and_config
       - cli_validation
-      # - unit_tests
+      - unit_tests
     if: fromJson(needs.checkout_and_config.outputs.hetero_train_test_matrix)[0] != null
     uses: ./.github/workflows/functional_tests_hetero_train.yml
     with:
@@ -219,7 +219,7 @@ jobs:
     needs:
       - checkout_and_config
       - cli_validation
-      # - unit_tests
+      - unit_tests
     if: fromJson(needs.checkout_and_config.outputs.inference_test_matrix)[0] != null
     uses: ./.github/workflows/functional_tests_inference.yml
     with:
@@ -238,7 +238,7 @@ jobs:
     needs:
       - checkout_and_config
       - cli_validation
-      # - unit_tests
+      - unit_tests
     if: fromJson(needs.checkout_and_config.outputs.serve_test_matrix)[0] != null
     uses: ./.github/workflows/functional_tests_serve.yml
     with:
@@ -276,7 +276,7 @@ jobs:
     needs:
       - checkout_and_config
       - cli_validation
-      # - unit_tests
+      - unit_tests
     if: fromJson(needs.checkout_and_config.outputs.benchmark_test_matrix)[0] != null
     uses: ./.github/workflows/functional_tests_benchmark.yml
     with:
@@ -298,7 +298,7 @@ jobs:
     needs:
       - checkout_and_config
       - cli_validation
-      # - unit_tests
+      - unit_tests
       - functional_tests_train
       - functional_tests_hetero_train
       - functional_tests_benchmark
@@ -314,11 +314,11 @@ jobs:
           # Check all test jobs (skip if not run)
           failed=false
 
-          # if [ "${{ needs.unit_tests.result }}" != "success" ] && \
-          #    [ "${{ needs.unit_tests.result }}" != "skipped" ]; then
-          #   echo "❌ Unit tests failed"
-          #   failed=true
-          # fi
+          if [ "${{ needs.unit_tests.result }}" != "success" ] && \
+             [ "${{ needs.unit_tests.result }}" != "skipped" ]; then
+            echo "❌ Unit tests failed"
+            failed=true
+          fi
 
           if [ "${{ needs.cli_validation.result }}" != "success" ] && \
              [ "${{ needs.cli_validation.result }}" != "skipped" ]; then
