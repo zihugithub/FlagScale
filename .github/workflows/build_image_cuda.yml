@@ -313,6 +313,12 @@ jobs:
     uses: ./.github/workflows/all_tests_common.yml
     with:
       platform: cuda
-      ci_train_image: "localhost:5000/flagscale-train:dev-cu128-py3.12-20260228210721"
+      ci_train_image: "localhost:5000/flagscale-train:dev-cu128-py3.12-20260415175802"
       ci_inference_image: ${{ needs.build.outputs.inference_tag }}
-      runs_on: '["self-hosted", "Linux", "X64", "nvidia-0", "gpus-8"]'
+      runs_on: >-
+        ${{ inputs.runs_on ||
+        '["self-hosted", "Linux", "X64", "nvidia-0", "gpus-8"]' }}
+      container_volumes: >-
+        ${{ inputs.container_volumes ||
+        '["/home/flagscale_cicd/docker/docker_build/docker_data:/home/gitlab-runner/data",
+        "/home/flagscale_cicd/docker/docker_build/docker_tokenizers:/home/gitlab-runner/tokenizers"]' }}
