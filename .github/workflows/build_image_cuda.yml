@@ -316,3 +316,4 @@ jobs:
       ci_train_image: "localhost:5000/flagscale-train:dev-cu128-py3.12-20260228210721"
       ci_inference_image: ${{ needs.build.outputs.inference_tag }}
       runs_on: "[self-hosted, Linux, X64, nvidia-0, gpus-8]"
+      platform: cuda
