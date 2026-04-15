@@ -164,7 +164,7 @@ jobs:
     needs:
       - checkout_and_config
       # - unit_tests
-    # if: fromJson(needs.checkout_and_config.outputs.train_test_matrix)[0] != null
+    if: needs.checkout_and_config.outputs.train_test_matrix != '[]'
     uses: ./.github/workflows/functional_tests_train.yml
     with:
       platform: ${{ inputs.platform }}
