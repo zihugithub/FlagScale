@@ -22,6 +22,11 @@ on:
         type: string
         description: Override runs_on. Falls back to platform config if not set.
         default: ""
+      container_volumes:
+        required: false
+        type: string
+        description: Override container_volumes. Falls back to platform config if not set.
+        default: ""
 
 jobs:
   checkout_and_config:
@@ -127,6 +132,11 @@ jobs:
           RUNS_ON_INPUT='${{ inputs.runs_on }}'
           if [ -n "$RUNS_ON_INPUT" ]; then
             { echo 'runs_on<<EOFRUNSON_INPUT'; echo "$RUNS_ON_INPUT"; echo 'EOFRUNSON_INPUT'; } >> $GITHUB_OUTPUT
+          fi
+          # (double quotes inside the JSON would break echo "container_volumes=${{ inputs.container_volumes }}")
+          CONTAINER_VOLUMES_INPUT='${{ inputs.container_volumes }}'
+          if [ -n "$CONTAINER_VOLUMES_INPUT" ]; then
+            { echo 'container_volumes<<EOFRUNSON_INPUT'; echo "$CONTAINER_VOLUMES_INPUT"; echo 'EOFRUNSON_INPUT'; } >> $GITHUB_OUTPUT
           fi
 
   # CLI validation runs first (outside virtual env) as a gate for all subsequent tests
