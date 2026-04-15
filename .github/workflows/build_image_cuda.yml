@@ -54,7 +54,9 @@ on:
         required: false
         type: string
         description: Override container_volumes. Falls back to platform config if not set.
-        default: '["/home/flagscale_cicd/docker/docker_build/docker_data:/home/gitlab-runner/data", "/home/flagscale_cicd/docker/docker_build/docker_tokenizers:/home/gitlab-runner/tokenizers"]'
+        default: >-
+          ["/home/flagscale_cicd/docker/docker_build/docker_data:/home/gitlab-runner/data",
+          "/home/flagscale_cicd/docker/docker_build/docker_tokenizers:/home/gitlab-runner/tokenizers"]
 
   # Trigger on PRs that modify docker-related files (build + test only, no push)
   pull_request:
@@ -328,5 +330,10 @@ jobs:
       platform: cuda
       ci_train_image: ${{ needs.build.outputs.train_tag }}
       ci_inference_image: ${{ needs.build.outputs.inference_tag }}
-      runs_on: ${{ inputs.runs_on || '["self-hosted", "Linux", "X64", "nvidia-0", "gpus-8"]' }}
-      container_volumes: ${{ inputs.container_volumes || '["/home/flagscale_cicd/docker/docker_build/docker_data:/home/gitlab-runner/data", "/home/flagscale_cicd/docker/docker_build/docker_tokenizers:/home/gitlab-runner/tokenizers"]'}}
+      runs_on: >-
+        ${{ inputs.runs_on ||
+        '["self-hosted", "Linux", "X64", "nvidia-0", "gpus-8"]' }}
+      container_volumes: >-
+        ${{ inputs.container_volumes ||
+        '["/home/flagscale_cicd/docker/docker_build/docker_data:/home/gitlab-runner/data",
+        "/home/flagscale_cicd/docker/docker_build/docker_tokenizers:/home/gitlab-runner/tokenizers"]' }}
