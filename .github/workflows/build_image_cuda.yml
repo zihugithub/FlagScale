@@ -55,12 +55,12 @@ on:
   # Temporary: trigger on push to feature branch for testing
   push:
     branches: [auto-build-image-20260320]
-    paths:
-      - 'docker/cuda/**'
-      - 'docker/build.sh'
-      - 'tools/install/**'
-      - 'requirements/**'
-      - '.github/workflows/build_image_cuda.yml'
+    # paths:
+    #   - 'docker/cuda/**'
+    #   - 'docker/build.sh'
+    #   - 'tools/install/**'
+    #   - 'requirements/**'
+    #   - '.github/workflows/build_image_cuda.yml'
 
 permissions:
   contents: read
@@ -306,6 +306,7 @@ jobs:
   # ---------------------------------------------------------------------------
   # Run CUDA tests after build succeeds
   # ---------------------------------------------------------------------------
+
   run_cuda_tests:
     name: Run CUDA tests
     needs: ['prepare', 'build']
