@@ -17,6 +17,11 @@ on:
         type: string
         description: Override inference image. Falls back to platform config if not set.
         default: ""
+      runs_on:
+        required: false
+        type: string
+        description: Override runs_on. Falls back to platform config if not set.
+        default: ""
 
 jobs:
   checkout_and_config:
@@ -116,6 +121,12 @@ jobs:
           fi
           if [ -n "${{ inputs.ci_inference_image }}" ]; then
             echo "ci_inference_image=${{ inputs.ci_inference_image }}" >> $GITHUB_OUTPUT
+          fi
+          # Use single-quoted assignment so bash treats the JSON value literally
+          # (double quotes inside the JSON would break echo "runs_on=${{ inputs.runs_on }}")
+          RUNS_ON_INPUT='${{ inputs.runs_on }}'
+          if [ -n "$RUNS_ON_INPUT" ]; then
+            { echo 'runs_on<<EOFRUNSON_INPUT'; echo "$RUNS_ON_INPUT"; echo 'EOFRUNSON_INPUT'; } >> $GITHUB_OUTPUT
           fi
 
   # CLI validation runs first (outside virtual env) as a gate for all subsequent tests
