@@ -61,7 +61,7 @@ on:
   # Trigger on PRs that modify docker-related files (build + test only, no push)
   pull_request:
     branches: [main]
-    paths:
+    paths:∏
       - 'docker/cuda/**'
       - 'docker/build.sh'
       - 'tools/install/**'
