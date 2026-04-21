@@ -115,6 +115,7 @@ jobs:
         run: cd $PROJECT_ROOT && bash ./tests/test_utils/runners/check_env.sh
 
       - name: Install dependencies for training
+        if: inputs.platform == 'cuda'
         run: |
           set -euo pipefail
           cd $PROJECT_ROOT
