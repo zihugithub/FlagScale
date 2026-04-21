@@ -1,6 +1,7 @@
 name: Push Images to Harbor
 
 on:
+  # Trigger on push to main to promote pre-built images
   push:
     branches: [main]
     paths:
@@ -11,7 +12,7 @@ on:
       - '.github/workflows/build_image_cuda.yml'
 
 permissions:
-  contents: write
+  contents: read
 
 env:
   REMOTE_REGISTRY: harbor.baai.ac.cn
@@ -20,10 +21,10 @@ env:
 
 jobs:
   # ---------------------------------------------------------------------------
-  # Prepare: scan tar directory and detect which images need promotion
+  # Prepare: find tar files matching this commit SHA
   # ---------------------------------------------------------------------------
   prepare:
-    name: Detect tar files
+    name: Detect tar files for ${{ github.sha }}
     runs-on: [self-hosted, Linux, X64, nvidia-0, gpus-8]
     outputs:
       needs_promotion: ${{ steps.detect.outputs.needs_promotion }}
@@ -31,15 +32,17 @@ jobs:
       inference_tar: ${{ steps.detect.outputs.inference_tar }}
       all_tar: ${{ steps.detect.outputs.all_tar }}
     steps:
-      - name: Detect tar files in ${{ env.TAR_DIR }}
+      - name: Find tar files by commit SHA
         id: detect
         run: |
           set -euo pipefail
           TAR_DIR="${{ env.TAR_DIR }}"
+          SHORT_SHA="${{ github.sha }}"
+          SHORT_SHA="${SHORT_SHA:0:7}"
 
-          TRAIN_TAR=$(find "$TAR_DIR" -maxdepth 1 -name '*flagscale-train*' -name '*.tar' 2>/dev/null | sort | tail -1)
-          INFERENCE_TAR=$(find "$TAR_DIR" -maxdepth 1 -name '*flagscale-inference*' -name '*.tar' 2>/dev/null | sort | tail -1)
-          ALL_TAR=$(find "$TAR_DIR" -maxdepth 1 -name '*flagscale-all*' -name '*.tar' 2>/dev/null | sort | tail -1)
+          TRAIN_TAR=$(find "$TAR_DIR" -maxdepth 1 -name "*flagscale-train*-${SHORT_SHA}.tar" 2>/dev/null | head -1)
+          INFERENCE_TAR=$(find "$TAR_DIR" -maxdepth 1 -name "*flagscale-inference*-${SHORT_SHA}.tar" 2>/dev/null | head -1)
+          ALL_TAR=$(find "$TAR_DIR" -maxdepth 1 -name "*flagscale-all*-${SHORT_SHA}.tar" 2>/dev/null | head -1)
 
           echo "train_tar=${TRAIN_TAR}" >> $GITHUB_OUTPUT
           echo "inference_tar=${INFERENCE_TAR}" >> $GITHUB_OUTPUT
@@ -47,13 +50,13 @@ jobs:
 
           if [ -n "$TRAIN_TAR" ] || [ -n "$INFERENCE_TAR" ] || [ -n "$ALL_TAR" ]; then
             echo "needs_promotion=true" >> $GITHUB_OUTPUT
-            echo "Detected tars:"
+            echo "Detected tars for SHA ${SHORT_SHA}:"
             if [ -n "$TRAIN_TAR" ];     then echo "  train:     $TRAIN_TAR"; fi
             if [ -n "$INFERENCE_TAR" ]; then echo "  inference: $INFERENCE_TAR"; fi
             if [ -n "$ALL_TAR" ];       then echo "  all:       $ALL_TAR"; fi
           else
             echo "needs_promotion=false" >> $GITHUB_OUTPUT
-            echo "No tar files found in $TAR_DIR, skipping promotion"
+            echo "::warning::No tar files found for SHA ${SHORT_SHA} in $TAR_DIR, skipping promotion"
           fi
 
   # ---------------------------------------------------------------------------
@@ -91,8 +94,8 @@ jobs:
           IMAGE_AND_TAG="${LOCAL_TAG#*/}"
           REMOTE_TAG="${{ env.REMOTE_REGISTRY }}/${{ env.REMOTE_IMAGE_PREFIX }}/${IMAGE_AND_TAG}"
 
-          docker tag "${LOCAL_TAG}" "${REMOTE_TAG}"
-          docker push "${REMOTE_TAG}"
+          sudo docker tag "${LOCAL_TAG}" "${REMOTE_TAG}"
+          sudo docker push "${REMOTE_TAG}"
           echo "remote_tag=${REMOTE_TAG}" >> $GITHUB_OUTPUT
           echo "Pushed: ${REMOTE_TAG}"
 
@@ -113,13 +116,13 @@ jobs:
           IMAGE_AND_TAG="${LOCAL_TAG#*/}"
           REMOTE_TAG="${{ env.REMOTE_REGISTRY }}/${{ env.REMOTE_IMAGE_PREFIX }}/${IMAGE_AND_TAG}"
 
-          docker tag "${LOCAL_TAG}" "${REMOTE_TAG}"
-          docker push "${REMOTE_TAG}"
+          sudo docker tag "${LOCAL_TAG}" "${REMOTE_TAG}"
+          sudo docker push "${REMOTE_TAG}"
           echo "remote_tag=${REMOTE_TAG}" >> $GITHUB_OUTPUT
           echo "Pushed: ${REMOTE_TAG}"
 
           echo "Removing tar: $TAR_PATH"
-          rm -f "$TAR_PATH"
+          sudo rm -f "$TAR_PATH"
 
       - name: Promote all image to Harbor
         id: promote_all
@@ -135,13 +138,13 @@ jobs:
           IMAGE_AND_TAG="${LOCAL_TAG#*/}"
           REMOTE_TAG="${{ env.REMOTE_REGISTRY }}/${{ env.REMOTE_IMAGE_PREFIX }}/${IMAGE_AND_TAG}"
 
-          docker tag "${LOCAL_TAG}" "${REMOTE_TAG}"
-          docker push "${REMOTE_TAG}"
+          sudo docker tag "${LOCAL_TAG}" "${REMOTE_TAG}"
+          sudo docker push "${REMOTE_TAG}"
           echo "remote_tag=${REMOTE_TAG}" >> $GITHUB_OUTPUT
           echo "Pushed: ${REMOTE_TAG}"
 
           echo "Removing tar: $TAR_PATH"
-          rm -f "$TAR_PATH"
+          sudo rm -f "$TAR_PATH"
 
   # ---------------------------------------------------------------------------
   # Update config: write Harbor image tags back to cuda.yml and commit
@@ -150,6 +153,8 @@ jobs:
     name: Update cuda.yml with Harbor image tags
     needs: promote
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
     steps:
       - name: Checkout code
         uses: actions/checkout@v4

@@ -250,8 +250,10 @@ jobs:
           TAR_DIR="${{ env.TAR_DIR }}"
           sudo mkdir -p "$TAR_DIR"
           IMAGE_TAG="${{ steps.meta.outputs.build_tag }}"
-          # Use image name with tag as filename (replace / and : with -)
-          TAR_NAME=$(echo "$IMAGE_TAG" | tr '/: ' '---').tar
+          SHA="${{ github.event.pull_request.head.sha || github.sha }}"
+          SHORT_SHA="${SHA:0:7}"
+          # Include short SHA in tar filename for deterministic lookup after merge
+          TAR_NAME=$(echo "$IMAGE_TAG" | tr '/: ' '---')-${SHORT_SHA}.tar
           sudo docker save "$IMAGE_TAG" -o "${TAR_DIR}/${TAR_NAME}"
           echo "tar_path=${TAR_DIR}/${TAR_NAME}" >> $GITHUB_OUTPUT
         id: save_tar
@@ -302,7 +304,7 @@ jobs:
           if [ -f "$TAR" ]; then
             echo "Loading $TAR"
             sudo docker load -i "$TAR"
-            docker push "$TAG"
+            sudo docker push "$TAG"
           else
             echo "::warning::Train image tar not found: $TAR, skipping load"
           fi
@@ -314,7 +316,7 @@ jobs:
           if [ -f "$TAR" ]; then
             echo "Loading $TAR"
             sudo docker load -i "$TAR"
-            docker push "$TAG"
+            sudo docker push "$TAG"
           else
             echo "::warning::Inference image tar not found: $TAR, skipping load"
           fi
