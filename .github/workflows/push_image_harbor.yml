@@ -17,7 +17,6 @@ permissions:
 env:
   REMOTE_REGISTRY: harbor.baai.ac.cn
   REMOTE_IMAGE_PREFIX: flagscale
-  TAR_DIR: /home/flagscale_cicd/images_tar
 
 jobs:
   # ---------------------------------------------------------------------------
@@ -32,17 +31,50 @@ jobs:
       inference_tar: ${{ steps.detect.outputs.inference_tar }}
       all_tar: ${{ steps.detect.outputs.all_tar }}
     steps:
-      - name: Find tar files by commit SHA
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          sparse-checkout: .github/configs
+
+      - name: Load tar_dir from platform config
+        id: config
+        run: |
+          TAR_DIR=$(grep '^tar_dir:' .github/configs/cuda.yml | awk '{print $2}')
+          echo "tar_dir=${TAR_DIR}" >> $GITHUB_OUTPUT
+
+      - name: Resolve PR number from merge commit
+        id: resolve_pr
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          MERGE_SHA="${{ github.sha }}"
+          PR_NUMBER=$(gh pr list \
+            --repo ${{ github.repository }} \
+            --state merged \
+            --base main \
+            --limit 50 \
+            --json number,mergeCommit \
+            --jq ".[] | select(.mergeCommit.oid == \"${MERGE_SHA}\") | .number" \
+            | head -1)
+
+          if [ -n "$PR_NUMBER" ]; then
+            echo "Found PR #${PR_NUMBER} for merge commit ${MERGE_SHA}"
+            echo "suffix=pr${PR_NUMBER}" >> $GITHUB_OUTPUT
+          else
+            echo "::warning::Could not find PR for merge commit ${MERGE_SHA}, falling back to short SHA"
+            echo "suffix=${MERGE_SHA:0:7}" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Find tar files by PR number
         id: detect
         run: |
           set -euo pipefail
-          TAR_DIR="${{ env.TAR_DIR }}"
-          SHORT_SHA="${{ github.sha }}"
-          SHORT_SHA="${SHORT_SHA:0:7}"
+          TAR_DIR="${{ steps.config.outputs.tar_dir }}"
+          SUFFIX="${{ steps.resolve_pr.outputs.suffix }}"
 
-          TRAIN_TAR=$(find "$TAR_DIR" -maxdepth 1 -name "*flagscale-train*-${SHORT_SHA}.tar" 2>/dev/null | head -1)
-          INFERENCE_TAR=$(find "$TAR_DIR" -maxdepth 1 -name "*flagscale-inference*-${SHORT_SHA}.tar" 2>/dev/null | head -1)
-          ALL_TAR=$(find "$TAR_DIR" -maxdepth 1 -name "*flagscale-all*-${SHORT_SHA}.tar" 2>/dev/null | head -1)
+          TRAIN_TAR=$(find "$TAR_DIR" -maxdepth 1 -name "*flagscale-train*-${SUFFIX}.tar" 2>/dev/null | head -1)
+          INFERENCE_TAR=$(find "$TAR_DIR" -maxdepth 1 -name "*flagscale-inference*-${SUFFIX}.tar" 2>/dev/null | head -1)
+          ALL_TAR=$(find "$TAR_DIR" -maxdepth 1 -name "*flagscale-all*-${SUFFIX}.tar" 2>/dev/null | head -1)
 
           echo "train_tar=${TRAIN_TAR}" >> $GITHUB_OUTPUT
           echo "inference_tar=${INFERENCE_TAR}" >> $GITHUB_OUTPUT
@@ -50,13 +82,13 @@ jobs:
 
           if [ -n "$TRAIN_TAR" ] || [ -n "$INFERENCE_TAR" ] || [ -n "$ALL_TAR" ]; then
             echo "needs_promotion=true" >> $GITHUB_OUTPUT
-            echo "Detected tars for SHA ${SHORT_SHA}:"
+            echo "Detected tars for ${SUFFIX}:"
             if [ -n "$TRAIN_TAR" ];     then echo "  train:     $TRAIN_TAR"; fi
             if [ -n "$INFERENCE_TAR" ]; then echo "  inference: $INFERENCE_TAR"; fi
             if [ -n "$ALL_TAR" ];       then echo "  all:       $ALL_TAR"; fi
           else
             echo "needs_promotion=false" >> $GITHUB_OUTPUT
-            echo "::warning::No tar files found for SHA ${SHORT_SHA} in $TAR_DIR, skipping promotion"
+            echo "::warning::No tar files found for ${SUFFIX} in $TAR_DIR, skipping promotion"
           fi
 
   # ---------------------------------------------------------------------------

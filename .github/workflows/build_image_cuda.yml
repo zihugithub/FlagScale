@@ -42,9 +42,9 @@ on:
         type: boolean
         default: false
       tar_dir:
-        description: 'Directory to store image tar files'
+        description: 'Directory to store image tar files (default: from .github/configs/cuda.yml)'
         type: string
-        default: '/home/flagscale_cicd/images_tar'
+        default: ''
       runs_on:
         required: false
         type: string
@@ -84,7 +84,6 @@ env:
   PYTHON_VERSION: '3.12'
   UV_VERSION: '0.7.2'
   PKG_MGR: ${{ inputs.pkg_mgr || 'conda' }}
-  TAR_DIR: ${{ inputs.tar_dir || '/home/flagscale_cicd/images_tar' }}
 
 jobs:
   # ---------------------------------------------------------------------------
@@ -98,7 +97,24 @@ jobs:
       target: ${{ steps.params.outputs.target }}
       push: ${{ steps.params.outputs.push }}
       no_cache: ${{ steps.params.outputs.no_cache }}
+      tar_dir: ${{ steps.config.outputs.tar_dir }}
     steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          sparse-checkout: .github/configs
+
+      - name: Load tar_dir from platform config
+        id: config
+        run: |
+          TAR_DIR=$(grep '^tar_dir:' .github/configs/cuda.yml | awk '{print $2}')
+          # Allow workflow_dispatch input to override config
+          OVERRIDE="${{ inputs.tar_dir }}"
+          if [ -n "$OVERRIDE" ]; then
+            TAR_DIR="$OVERRIDE"
+          fi
+          echo "tar_dir=${TAR_DIR}" >> $GITHUB_OUTPUT
+
       - name: Determine build matrix
         id: set-matrix
         run: |
@@ -247,13 +263,18 @@ jobs:
 
       - name: Save image as tar
         run: |
-          TAR_DIR="${{ env.TAR_DIR }}"
+          TAR_DIR="${{ needs.prepare.outputs.tar_dir }}"
           sudo mkdir -p "$TAR_DIR"
           IMAGE_TAG="${{ steps.meta.outputs.build_tag }}"
-          SHA="${{ github.event.pull_request.head.sha || github.sha }}"
-          SHORT_SHA="${SHA:0:7}"
-          # Include short SHA in tar filename for deterministic lookup after merge
-          TAR_NAME=$(echo "$IMAGE_TAG" | tr '/: ' '---')-${SHORT_SHA}.tar
+          PR_NUMBER="${{ github.event.pull_request.number }}"
+          # Use PR number for deterministic lookup after merge; fall back to short SHA for manual dispatch
+          if [ -n "$PR_NUMBER" ]; then
+            SUFFIX="pr${PR_NUMBER}"
+          else
+            SHA="${{ github.sha }}"
+            SUFFIX="${SHA:0:7}"
+          fi
+          TAR_NAME=$(echo "$IMAGE_TAG" | tr '/: ' '---')-${SUFFIX}.tar
           sudo docker save "$IMAGE_TAG" -o "${TAR_DIR}/${TAR_NAME}"
           echo "tar_path=${TAR_DIR}/${TAR_NAME}" >> $GITHUB_OUTPUT
         id: save_tar
