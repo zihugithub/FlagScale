@@ -30,6 +30,8 @@ jobs:
       train_tar: ${{ steps.detect.outputs.train_tar }}
       inference_tar: ${{ steps.detect.outputs.inference_tar }}
       all_tar: ${{ steps.detect.outputs.all_tar }}
+      tar_dir: ${{ steps.config.outputs.tar_dir }}
+      suffix: ${{ steps.resolve_pr.outputs.suffix }}
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -72,9 +74,9 @@ jobs:
           TAR_DIR="${{ steps.config.outputs.tar_dir }}"
           SUFFIX="${{ steps.resolve_pr.outputs.suffix }}"
 
-          TRAIN_TAR=$(find "$TAR_DIR" -maxdepth 1 -name "*flagscale-train*-${SUFFIX}.tar" 2>/dev/null | head -1)
-          INFERENCE_TAR=$(find "$TAR_DIR" -maxdepth 1 -name "*flagscale-inference*-${SUFFIX}.tar" 2>/dev/null | head -1)
-          ALL_TAR=$(find "$TAR_DIR" -maxdepth 1 -name "*flagscale-all*-${SUFFIX}.tar" 2>/dev/null | head -1)
+          TRAIN_TAR=$(find "$TAR_DIR" -maxdepth 1 -name "*flagscale-train*-${SUFFIX}.tar" 2>/dev/null | sort -r | head -1)
+          INFERENCE_TAR=$(find "$TAR_DIR" -maxdepth 1 -name "*flagscale-inference*-${SUFFIX}.tar" 2>/dev/null | sort -r | head -1)
+          ALL_TAR=$(find "$TAR_DIR" -maxdepth 1 -name "*flagscale-all*-${SUFFIX}.tar" 2>/dev/null | sort -r | head -1)
 
           echo "train_tar=${TRAIN_TAR}" >> $GITHUB_OUTPUT
           echo "inference_tar=${INFERENCE_TAR}" >> $GITHUB_OUTPUT
@@ -131,9 +133,6 @@ jobs:
           echo "remote_tag=${REMOTE_TAG}" >> $GITHUB_OUTPUT
           echo "Pushed: ${REMOTE_TAG}"
 
-          echo "Removing tar: $TAR_PATH"
-          sudo rm -f "$TAR_PATH"
-
       - name: Promote inference image to Harbor
         id: promote_inference
         if: needs.prepare.outputs.inference_tar != ''
@@ -153,9 +152,6 @@ jobs:
           echo "remote_tag=${REMOTE_TAG}" >> $GITHUB_OUTPUT
           echo "Pushed: ${REMOTE_TAG}"
 
-          echo "Removing tar: $TAR_PATH"
-          sudo rm -f "$TAR_PATH"
-
       - name: Promote all image to Harbor
         id: promote_all
         if: needs.prepare.outputs.all_tar != ''
@@ -174,9 +170,6 @@ jobs:
           sudo docker push "${REMOTE_TAG}"
           echo "remote_tag=${REMOTE_TAG}" >> $GITHUB_OUTPUT
           echo "Pushed: ${REMOTE_TAG}"
-
-          echo "Removing tar: $TAR_PATH"
-          sudo rm -f "$TAR_PATH"
 
   # ---------------------------------------------------------------------------
   # Update config: write Harbor image tags back to cuda.yml and commit
@@ -234,10 +227,19 @@ jobs:
   # ---------------------------------------------------------------------------
   cleanup:
     name: Clean up build cache
-    needs: promote
+    needs: ['prepare', 'promote']
     runs-on: [self-hosted, Linux, X64, nvidia-0, gpus-8]
     if: always()
     steps:
+      - name: Remove stale tar files for this PR
+        run: |
+          TAR_DIR="${{ needs.prepare.outputs.tar_dir }}"
+          SUFFIX="${{ needs.prepare.outputs.suffix }}"
+          if [ -n "$SUFFIX" ] && [ -n "$TAR_DIR" ]; then
+            echo "Cleaning up old tar files matching *-${SUFFIX}.tar in $TAR_DIR"
+            find "$TAR_DIR" -maxdepth 1 -name "*-${SUFFIX}.tar" -exec sudo rm -f {} +
+          fi
+
       - name: Remove dangling images
         run: docker image prune -f 2>/dev/null || true
 
